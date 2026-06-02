@@ -37,6 +37,11 @@ dependencies:
   google_fonts: ^6.1.0
   flutter_animate: ^4.5.0
   dio: ^5.4.0
+  
+  # AR Try-On Dependencies
+  camera: ^0.10.6
+  google_mlkit_face_detection: ^0.13.2
+  image: ^4.9.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
