@@ -1,9 +1,13 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:gal/gal.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../domain/services/ar_overlay_renderer.dart';
 import '../../domain/services/face_detection_service.dart';
@@ -171,6 +175,7 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
   final _detector = FaceDetectionService();
   final _renderer = ArOverlayRenderer();
   final _prompt = TextEditingController();
+  final _resultKey = GlobalKey();
 
   Uint8List? _photo;
   Size? _photoSize;
@@ -302,6 +307,83 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
     _rotation = 0;
   }
 
+  Future<Uint8List> _captureResult() async {
+    await WidgetsBinding.instance.endOfFrame;
+    final boundary =
+        _resultKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) {
+      throw StateError('The try-on result is not ready.');
+    }
+    final image = await boundary.toImage(pixelRatio: 3);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    if (byteData == null) {
+      throw StateError('Could not create the result image.');
+    }
+    return byteData.buffer.asUint8List();
+  }
+
+  Future<void> _saveResult() async {
+    if (_photo == null || _working) return;
+    setState(() {
+      _working = true;
+      _status = 'Saving result to your gallery...';
+    });
+    try {
+      final bytes = await _captureResult();
+      await Gal.putImageBytes(
+        bytes,
+        name: 'salon_tryon_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (mounted) {
+        setState(() => _status = 'Result saved to your gallery.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _status = 'Could not save the result. Check photo access.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Future<void> _shareResult() async {
+    if (_photo == null || _working) return;
+    setState(() {
+      _working = true;
+      _status = 'Preparing result to share...';
+    });
+    try {
+      final bytes = await _captureResult();
+      final fileName =
+          'salon_tryon_${DateTime.now().millisecondsSinceEpoch}.png';
+      final resultBox =
+          _resultKey.currentContext?.findRenderObject() as RenderBox?;
+      final shareOrigin = resultBox == null
+          ? null
+          : resultBox.localToGlobal(Offset.zero) & resultBox.size;
+      await SharePlus.instance.share(
+        ShareParams(
+          text: 'My virtual try-on result from The Salon App',
+          files: [XFile.fromData(bytes, mimeType: 'image/png')],
+          fileNameOverrides: [fileName],
+          sharePositionOrigin: shareOrigin,
+        ),
+      );
+      if (mounted) {
+        setState(() => _status = 'Result ready to share.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _status = 'Could not share the result.');
+      }
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final models = _styles
@@ -321,29 +403,32 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
             const SizedBox(height: 4),
             const Text('Then tap a model to instantly preview the style.'),
             const SizedBox(height: 14),
-            _ResultPreview(
-              photo: _photo,
-              photoSize: _photoSize,
-              face: _face,
-              category: _category,
-              style: _style,
-              renderer: _renderer,
-              adjustment: _adjustment,
-              scale: _scale,
-              rotation: _rotation,
-              onGestureStart: (details) {
-                _startAdjustment = _adjustment;
-                _startFocalPoint = details.focalPoint;
-                _startScale = _scale;
-                _startRotation = _rotation;
-              },
-              onGestureUpdate: (details) => setState(() {
-                _adjustment =
-                    _startAdjustment + details.focalPoint - _startFocalPoint;
-                _scale = (_startScale * details.scale).clamp(0.3, 3);
-                _rotation = _startRotation + details.rotation;
-              }),
-              onChoosePhoto: () => _pickPhoto(ImageSource.gallery),
+            RepaintBoundary(
+              key: _resultKey,
+              child: _ResultPreview(
+                photo: _photo,
+                photoSize: _photoSize,
+                face: _face,
+                category: _category,
+                style: _style,
+                renderer: _renderer,
+                adjustment: _adjustment,
+                scale: _scale,
+                rotation: _rotation,
+                onGestureStart: (details) {
+                  _startAdjustment = _adjustment;
+                  _startFocalPoint = details.focalPoint;
+                  _startScale = _scale;
+                  _startRotation = _rotation;
+                },
+                onGestureUpdate: (details) => setState(() {
+                  _adjustment =
+                      _startAdjustment + details.focalPoint - _startFocalPoint;
+                  _scale = (_startScale * details.scale).clamp(0.3, 3);
+                  _rotation = _startRotation + details.rotation;
+                }),
+                onChoosePhoto: () => _pickPhoto(ImageSource.gallery),
+              ),
             ),
             const SizedBox(height: 10),
             Row(
@@ -364,6 +449,26 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
                       : () => _pickPhoto(ImageSource.camera),
                   icon: const Icon(Icons.camera_alt_outlined),
                   tooltip: 'Take photo',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: _photo == null || _working ? null : _saveResult,
+                    icon: const Icon(Icons.download_outlined),
+                    label: const Text('Save result'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _photo == null || _working ? null : _shareResult,
+                    icon: const Icon(Icons.share_outlined),
+                    label: const Text('Share'),
+                  ),
                 ),
               ],
             ),
@@ -674,7 +779,7 @@ class _StyleImage extends StatelessWidget {
     final tint = style.tint;
     if (tint == null) return image;
     return ColorFiltered(
-      colorFilter: ColorFilter.mode(tint, BlendMode.color),
+      colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
       child: image,
     );
   }

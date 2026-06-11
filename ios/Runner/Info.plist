@@ -6,6 +6,8 @@
 	<string>The Salon App uses the camera to capture photos for virtual try-on.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>The Salon App uses your selected photo to generate a virtual try-on.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>The Salon App saves your virtual try-on results to your photo library.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
