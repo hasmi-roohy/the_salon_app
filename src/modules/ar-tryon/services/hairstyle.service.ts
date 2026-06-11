@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Hairstyle } from '../entities/hairstyle.entity';
@@ -16,8 +20,11 @@ export class HairstyleService {
     return this.hairstyleRepository.save(hairstyle);
   }
 
+  // ✅ FIX #1: Safe limit parsing
   async findAll(query: GetHairstylesDto): Promise<Hairstyle[]> {
-    const queryBuilder = this.hairstyleRepository.createQueryBuilder('hairstyle');
+    const queryBuilder = this.hairstyleRepository.createQueryBuilder(
+      'hairstyle',
+    );
 
     if (query.category) {
       queryBuilder.andWhere('hairstyle.category = :category', {
@@ -27,7 +34,7 @@ export class HairstyleService {
 
     if (query.faceShape) {
       queryBuilder.andWhere(
-        "hairstyle.metadata->>'faceShapeCompatibility' ILIKE :faceShape",
+        "hairstyle.metadata::text ILIKE :faceShape",
         {
           faceShape: `%${query.faceShape}%`,
         },
@@ -37,8 +44,21 @@ export class HairstyleService {
     queryBuilder.andWhere('hairstyle.isActive = :isActive', { isActive: true });
     queryBuilder.orderBy('hairstyle.trialCount', 'DESC');
 
-    const limit = parseInt(query.limit || '10', 10);
+    // 🔴 OLD (broken):
+    // const limit = parseInt(query.limit || '10', 10);
+    // queryBuilder.limit(limit);
+
+    // ✅ NEW (safe):
+    // - Prevents ?limit=abc (NaN → 10)
+    // - Prevents ?limit=-100 (negative → 1)
+    // - Prevents ?limit=999999 (too large → 100)
+    const limit = Math.min(Math.max(query.limit || 10, 1), 100);
     queryBuilder.limit(limit);
+
+    // ✅ Pagination support
+    const page = Math.max(query.page || 1, 1);
+    const skip = (page - 1) * limit;
+    queryBuilder.skip(skip);
 
     return queryBuilder.getMany();
   }
@@ -74,7 +94,7 @@ export class HairstyleService {
   async findByFaceShape(faceShape: string): Promise<Hairstyle[]> {
     return this.hairstyleRepository
       .createQueryBuilder('hairstyle')
-      .where("hairstyle.metadata->>'faceShapeCompatibility' ILIKE :faceShape", {
+      .where("hairstyle.metadata::text ILIKE :faceShape", {
         faceShape: `%${faceShape}%`,
       })
       .andWhere('hairstyle.isActive = :isActive', { isActive: true })

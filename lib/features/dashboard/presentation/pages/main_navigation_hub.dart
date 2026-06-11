@@ -4,6 +4,7 @@ import 'package:the_salon_app/core/presentation/theme/app_theme.dart';
 import 'package:the_salon_app/features/explore/presentation/pages/adaptive_explore_page.dart';
 import 'package:the_salon_app/features/ai_salon/presentation/pages/ai_diagnostic_workspace.dart';
 import 'package:the_salon_app/features/ai_salon/presentation/pages/ai_smart_mirror_workspace.dart';
+
 class MainNavigationHub extends StatefulWidget {
   const MainNavigationHub({super.key});
 
@@ -16,7 +17,9 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
 
   final List<Widget> _pages = [
     const AdaptiveExplorePage(),
-    const Scaffold(body: Center(child: Text('Social Hub (Reels) - Coming Soon'))),
+    const Scaffold(
+      body: Center(child: Text('Social Hub (Reels) - Coming Soon')),
+    ),
     const AiDiagnosticWorkspace(),
     const AiSmartMirrorWorkspace(),
     const Scaffold(body: Center(child: Text('Profile - Coming Soon'))),
@@ -42,10 +45,19 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
                   onDestinationSelected: _onTabTapped,
                   labelType: NavigationRailLabelType.all,
                   backgroundColor: Colors.white,
-                  selectedIconTheme: const IconThemeData(color: AppTheme.primaryBlue),
-                  unselectedIconTheme: const IconThemeData(color: AppTheme.textLight),
-                  selectedLabelTextStyle: const TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold),
-                  unselectedLabelTextStyle: const TextStyle(color: AppTheme.textLight),
+                  selectedIconTheme: const IconThemeData(
+                    color: AppTheme.primaryBlue,
+                  ),
+                  unselectedIconTheme: const IconThemeData(
+                    color: AppTheme.textLight,
+                  ),
+                  selectedLabelTextStyle: const TextStyle(
+                    color: AppTheme.primaryBlue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  unselectedLabelTextStyle: const TextStyle(
+                    color: AppTheme.textLight,
+                  ),
                   destinations: const [
                     NavigationRailDestination(
                       icon: Icon(Icons.explore_outlined),
@@ -76,10 +88,7 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
                 Expanded(
-                  child: IndexedStack(
-                    index: _currentIndex,
-                    children: _pages,
-                  ),
+                  child: IndexedStack(index: _currentIndex, children: _pages),
                 ),
               ],
             );
@@ -88,10 +97,7 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
             return Column(
               children: [
                 Expanded(
-                  child: IndexedStack(
-                    index: _currentIndex,
-                    children: _pages,
-                  ),
+                  child: IndexedStack(index: _currentIndex, children: _pages),
                 ),
                 _buildAnimatedBottomNavBar(),
               ],
@@ -104,37 +110,73 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
 
   Widget _buildAnimatedBottomNavBar() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(0, Icons.explore_outlined, Icons.explore, 'Explore'),
-              _buildNavItem(1, Icons.video_collection_outlined, Icons.video_collection, 'Social'),
-              _buildNavItem(2, Icons.auto_awesome_outlined, Icons.auto_awesome, 'AI Salon'),
-              _buildNavItem(3, Icons.camera_front_outlined, Icons.camera_front, 'AR Mirror'),
-              _buildNavItem(4, Icons.person_outline, Icons.person, 'Profile'),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
             ],
           ),
-        ),
-      ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 1.0, end: 0.0, curve: Curves.easeOutQuad);
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+                vertical: 8.0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(
+                    0,
+                    Icons.explore_outlined,
+                    Icons.explore,
+                    'Explore',
+                  ),
+                  _buildNavItem(
+                    1,
+                    Icons.video_collection_outlined,
+                    Icons.video_collection,
+                    'Social',
+                  ),
+                  _buildNavItem(
+                    2,
+                    Icons.auto_awesome_outlined,
+                    Icons.auto_awesome,
+                    'AI Salon',
+                  ),
+                  _buildNavItem(
+                    3,
+                    Icons.camera_front_outlined,
+                    Icons.camera_front,
+                    'AR Mirror',
+                  ),
+                  _buildNavItem(
+                    4,
+                    Icons.person_outline,
+                    Icons.person,
+                    'Profile',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        )
+        .animate()
+        .fadeIn(duration: 400.ms)
+        .slideY(begin: 1.0, end: 0.0, curve: Curves.easeOutQuad);
   }
 
-  Widget _buildNavItem(int index, IconData icon, IconData selectedIcon, String label) {
+  Widget _buildNavItem(
+    int index,
+    IconData icon,
+    IconData selectedIcon,
+    String label,
+  ) {
     final isSelected = _currentIndex == index;
-    
+
     return Expanded(
       child: GestureDetector(
         onTap: () => _onTabTapped(index),
@@ -145,7 +187,9 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
           padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
           margin: const EdgeInsets.symmetric(horizontal: 2.0),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent,
+            color: isSelected
+                ? AppTheme.primaryBlue.withValues(alpha: 0.1)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -162,8 +206,12 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
                   label,
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? AppTheme.primaryBlue : AppTheme.textLight,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: isSelected
+                        ? AppTheme.primaryBlue
+                        : AppTheme.textLight,
                   ),
                 ),
               ),

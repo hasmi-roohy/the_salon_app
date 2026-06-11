@@ -35,7 +35,7 @@ export class BeardService {
     queryBuilder.andWhere('beard.isActive = :isActive', { isActive: true });
     queryBuilder.orderBy('beard.trialCount', 'DESC');
 
-    const limit = parseInt(query.limit || '10', 10);
+   const limit = parseInt(String(query.limit ?? '10'), 10);
     queryBuilder.limit(limit);
 
     return queryBuilder.getMany();

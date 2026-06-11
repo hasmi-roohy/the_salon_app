@@ -18,7 +18,7 @@ class AppTheme {
         primary: primaryBlue,
         secondary: secondaryDeepNavy,
         surface: Colors.white,
-        background: lightGreyScaffold,
+        surfaceContainerLowest: lightGreyScaffold,
       ),
       scaffoldBackgroundColor: lightGreyScaffold,
       textTheme: GoogleFonts.interTextTheme().copyWith(
@@ -33,52 +33,42 @@ class AppTheme {
           fontWeight: FontWeight.w600,
           fontSize: 24,
         ),
-        bodyLarge: GoogleFonts.inter(
-          color: textDark,
-          fontSize: 16,
-        ),
-        bodyMedium: GoogleFonts.inter(
-          color: textLight,
-          fontSize: 14,
-        ),
+        bodyLarge: GoogleFonts.inter(color: textDark, fontSize: 16),
+        bodyMedium: GoogleFonts.inter(color: textLight, fontSize: 14),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith<Color>(
-            (Set<WidgetState> states) {
-              if (states.contains(WidgetState.pressed)) {
-                return secondaryDeepNavy;
-              } else if (states.contains(WidgetState.disabled)) {
-                return Colors.grey.shade400;
-              }
-              return primaryBlue; // Default state
-            },
-          ),
+          backgroundColor: WidgetStateProperty.resolveWith<Color>((
+            Set<WidgetState> states,
+          ) {
+            if (states.contains(WidgetState.pressed)) {
+              return secondaryDeepNavy;
+            } else if (states.contains(WidgetState.disabled)) {
+              return Colors.grey.shade400;
+            }
+            return primaryBlue; // Default state
+          }),
           foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
-          elevation: WidgetStateProperty.resolveWith<double>(
-            (Set<WidgetState> states) {
-              if (states.contains(WidgetState.pressed)) {
-                return 0;
-              }
-              return 4;
-            },
-          ),
+          elevation: WidgetStateProperty.resolveWith<double>((
+            Set<WidgetState> states,
+          ) {
+            if (states.contains(WidgetState.pressed)) {
+              return 0;
+            }
+            return 4;
+          }),
           padding: WidgetStateProperty.all<EdgeInsetsGeometry>(
             const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           ),
           shape: WidgetStateProperty.all<RoundedRectangleBorder>(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ),
       cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }

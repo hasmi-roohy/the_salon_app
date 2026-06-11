@@ -32,7 +32,7 @@ export class NailService {
     queryBuilder.andWhere('nail.isActive = :isActive', { isActive: true });
     queryBuilder.orderBy('nail.trialCount', 'DESC');
 
-    const limit = parseInt(query.limit || '10', 10);
+    const limit = parseInt(String(query.limit ?? '10'), 10);
     queryBuilder.limit(limit);
 
     return queryBuilder.getMany();

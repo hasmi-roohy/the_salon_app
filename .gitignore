@@ -38,6 +38,12 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Node/NestJS generated files
+/node_modules/
+/dist/
+/tmp/
+*.tsbuildinfo
+
 # Symbolication related
 app.*.symbols
 

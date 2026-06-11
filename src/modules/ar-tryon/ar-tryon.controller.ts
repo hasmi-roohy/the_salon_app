@@ -16,7 +16,7 @@ import {
   NailService,
   TryOnResultService,
   RecommendationService,
-} from '../services';
+} from './services';
 import {
   CreateHairstyleDto,
   UpdateHairstyleDto,
@@ -31,7 +31,7 @@ import {
   GetTryOnResultsDto,
   ShareTryOnResultDto,
   GetRecommendationsDto,
-} from '../dto';
+} from './dto';
 
 @Controller('api/ar-tryon')
 export class ArTryonController {

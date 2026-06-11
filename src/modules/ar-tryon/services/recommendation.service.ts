@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Hairstyle } from '../entities/hairstyle.entity';
@@ -9,6 +9,13 @@ import { GetRecommendationsDto } from '../dto';
 
 @Injectable()
 export class RecommendationService {
+  // ✅ FIX #6: Safe field mapping instead of dynamic strings
+  private readonly fieldMap = {
+    hairstyle: 'preferredHairstyles',
+    beard: 'preferredBeards',
+    nail: 'preferredNails',
+  };
+
   constructor(
     @InjectRepository(Hairstyle)
     private hairstyleRepository: Repository<Hairstyle>,
@@ -60,6 +67,7 @@ export class RecommendationService {
     };
   }
 
+  // ✅ FIX #4: Add fallback recommendations when face shape has no matches
   private async getHairstyleRecommendations(
     faceShape: string,
     userPreferred: string[] = [],
@@ -73,11 +81,20 @@ export class RecommendationService {
       );
     }
 
-    const recommended = await query
+    let recommended = await query
       .andWhere('hairstyle.isActive = :isActive', { isActive: true })
       .orderBy('hairstyle.trialCount', 'DESC')
       .limit(10)
       .getMany();
+
+    // 🔄 FALLBACK: If no results for face shape, return popular hairstyles
+    if (recommended.length === 0) {
+      recommended = await this.hairstyleRepository.find({
+        where: { isActive: true },
+        order: { trialCount: 'DESC' },
+        take: 10,
+      });
+    }
 
     // Boost user's preferred hairstyles to top
     if (userPreferred && userPreferred.length > 0) {
@@ -91,6 +108,7 @@ export class RecommendationService {
     return recommended;
   }
 
+  // ✅ FIX #4: Add fallback recommendations when face shape has no matches
   private async getBeardRecommendations(
     faceShape: string,
     userPreferred: string[] = [],
@@ -104,11 +122,20 @@ export class RecommendationService {
       );
     }
 
-    const recommended = await query
+    let recommended = await query
       .andWhere('beard.isActive = :isActive', { isActive: true })
       .orderBy('beard.trialCount', 'DESC')
       .limit(10)
       .getMany();
+
+    // 🔄 FALLBACK: If no results for face shape, return popular beards
+    if (recommended.length === 0) {
+      recommended = await this.beardRepository.find({
+        where: { isActive: true },
+        order: { trialCount: 'DESC' },
+        take: 10,
+      });
+    }
 
     if (userPreferred && userPreferred.length > 0) {
       const preferred = recommended.filter((b) =>
@@ -165,6 +192,7 @@ export class RecommendationService {
     return this.userPreferenceRepository.save(preference);
   }
 
+  // ✅ FIX #6: Use safe fieldMap instead of dynamic string
   async addToPreferred(
     userId: string,
     type: 'hairstyle' | 'beard' | 'nail',
@@ -178,7 +206,7 @@ export class RecommendationService {
       preference = this.userPreferenceRepository.create({ userId });
     }
 
-    const fieldName = `preferred${type.charAt(0).toUpperCase() + type.slice(1)}s`;
+    const fieldName = this.fieldMap[type];
 
     if (!preference[fieldName]) {
       preference[fieldName] = [];
@@ -191,6 +219,7 @@ export class RecommendationService {
     return this.userPreferenceRepository.save(preference);
   }
 
+  // ✅ FIX #2: Throw error if preference not found + use safe fieldMap
   async removeFromPreferred(
     userId: string,
     type: 'hairstyle' | 'beard' | 'nail',
@@ -200,16 +229,20 @@ export class RecommendationService {
       where: { userId },
     });
 
-    if (preference) {
-      const fieldName = `preferred${type.charAt(0).toUpperCase() + type.slice(1)}s`;
-      if (preference[fieldName]) {
-        preference[fieldName] = preference[fieldName].filter(
-          (id) => id !== styleId,
-        );
-      }
-      return this.userPreferenceRepository.save(preference);
+    // 🔴 FIX: Throw error instead of returning undefined
+    if (!preference) {
+      throw new NotFoundException(
+        `User preference not found for user ${userId}`,
+      );
     }
 
-    return preference;
+    // ✅ FIX #6: Use safe fieldMap instead of dynamic string
+    const fieldName = this.fieldMap[type];
+
+    preference[fieldName] = (preference[fieldName] || []).filter(
+      (id) => id !== styleId,
+    );
+
+    return this.userPreferenceRepository.save(preference);
   }
 }

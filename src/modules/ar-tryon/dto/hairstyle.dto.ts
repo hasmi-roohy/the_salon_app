@@ -1,5 +1,14 @@
-import { IsString, IsNotEmpty, IsOptional, IsUrl } from 'class-validator';
-
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUrl,
+  IsInt,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 export class CreateHairstyleDto {
   @IsString()
   @IsNotEmpty()
@@ -56,6 +65,8 @@ export class UpdateHairstyleDto {
   };
 }
 
+// ✅ FIX #9: Add pagination support
+// ✅ FIX #1: Change limit from string to number with validation
 export class GetHairstylesDto {
   @IsString()
   @IsOptional()
@@ -65,7 +76,18 @@ export class GetHairstylesDto {
   @IsOptional()
   faceShape?: string;
 
-  @IsString()
+  // ✅ NEW: Pagination page
   @IsOptional()
-  limit?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  // ✅ FIXED: Changed from string to number
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
 }

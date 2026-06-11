@@ -1,5 +1,15 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsInt,
+  Min,
+  Max,
 
+} from 'class-validator';
+
+import { Type } from 'class-transformer';
 export class SaveTryOnResultDto {
   @IsUUID()
   @IsOptional()
@@ -33,13 +43,29 @@ export class SaveTryOnResultDto {
   };
 }
 
+// ✅ FIX #9: Add pagination support
+// ✅ FIXED: Changed offset and limit from string to number with validation
 export class GetTryOnResultsDto {
-  @IsString()
+  // ✅ NEW: Pagination page
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  // ✅ FIXED: Changed from string to number with validation
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
   limit?: string;
 
-  @IsString()
+  // ✅ FIXED: Changed from string to number (deprecated in favor of page)
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
   offset?: string;
 }
 
@@ -61,4 +87,19 @@ export class GetRecommendationsDto {
   @IsString()
   @IsOptional()
   type?: string; // hairstyle, beard, nail
+
+  // ✅ NEW: Pagination page
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  // ✅ NEW: Pagination limit
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
 }

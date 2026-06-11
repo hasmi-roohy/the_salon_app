@@ -1,5 +1,3 @@
-import 'package:dio/dio.dart';
-
 class Hairstyle {
   final String id;
   final String name;
@@ -225,15 +223,21 @@ class Recommendations {
 
   factory Recommendations.fromJson(Map<String, dynamic> json) {
     return Recommendations(
-      hairstyles: (json['hairstyles'] as List?)
-          ?.map((e) => Hairstyle.fromJson(e as Map<String, dynamic>))
-          .toList() ?? [],
-      beards: (json['beards'] as List?)
-          ?.map((e) => Beard.fromJson(e as Map<String, dynamic>))
-          .toList() ?? [],
-      nails: (json['nails'] as List?)
-          ?.map((e) => Nail.fromJson(e as Map<String, dynamic>))
-          .toList() ?? [],
+      hairstyles:
+          (json['hairstyles'] as List?)
+              ?.map((e) => Hairstyle.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      beards:
+          (json['beards'] as List?)
+              ?.map((e) => Beard.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      nails:
+          (json['nails'] as List?)
+              ?.map((e) => Nail.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       basedOnFaceShape: json['basedOnFaceShape'] as String?,
       personalized: json['personalized'] as bool? ?? false,
     );

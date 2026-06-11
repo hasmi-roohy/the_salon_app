@@ -1,7 +1,38 @@
-import 'dart:ui';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:the_salon_app/core/presentation/theme/app_theme.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
+
+import '../../domain/services/ar_overlay_renderer.dart';
+import '../../domain/services/face_detection_service.dart';
+
+enum TryOnCategory { hairstyle, beard, nailArt }
+
+class TryOnStyle {
+  final String id;
+  final String name;
+  final TryOnCategory category;
+  final String assetPath;
+  final Color? tint;
+  final double size;
+  final double widthFactor;
+  final double heightFactor;
+  final double verticalOffsetFactor;
+
+  const TryOnStyle({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.assetPath,
+    this.tint,
+    this.size = 1,
+    this.widthFactor = 1,
+    this.heightFactor = 1,
+    this.verticalOffsetFactor = 0,
+  });
+}
 
 class AiSmartMirrorWorkspace extends StatefulWidget {
   const AiSmartMirrorWorkspace({super.key});
@@ -10,400 +41,655 @@ class AiSmartMirrorWorkspace extends StatefulWidget {
   State<AiSmartMirrorWorkspace> createState() => _AiSmartMirrorWorkspaceState();
 }
 
-class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> with SingleTickerProviderStateMixin {
-  String? _selectedStyle;
-  
-  final List<Map<String, String>> _styleAdjustments = [
-    {'id': 'classic_pompadour', 'name': 'Classic Pompadour', 'icon': '✂️'},
-    {'id': 'buzz_cut', 'name': 'Buzz Cut', 'icon': '🪒'},
-    {'id': 'corporate_beard', 'name': 'Corporate Beard', 'icon': '🧔'},
-    {'id': 'slick_back', 'name': 'Slick Back', 'icon': '🕶️'},
+class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
+  static const _styles = [
+    TryOnStyle(
+      id: 'textured-black',
+      name: 'Textured black',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/textured-black.png',
+      size: 1.08,
+    ),
+    TryOnStyle(
+      id: 'textured-brown',
+      name: 'Warm brown quiff',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/warm-brown-quiff.png',
+      size: 1.12,
+    ),
+    TryOnStyle(
+      id: 'textured-burgundy',
+      name: 'Burgundy crop',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/burgundy-crop.png',
+      size: 1.1,
+    ),
+    TryOnStyle(
+      id: 'slick-back',
+      name: 'Slick back',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/slick-back.png',
+      size: 1.12,
+    ),
+    TryOnStyle(
+      id: 'curly-fade',
+      name: 'Curly fade',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/curly-fade.png',
+      size: 1.12,
+    ),
+    TryOnStyle(
+      id: 'classic-side-part',
+      name: 'Classic side part',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/classic-side-part.png',
+      size: 1.12,
+    ),
+    TryOnStyle(
+      id: 'long-layered',
+      name: 'Long butterfly',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/long-layered.png',
+      widthFactor: 1.12,
+      heightFactor: 3.2,
+      verticalOffsetFactor: 1.05,
+    ),
+    TryOnStyle(
+      id: 'layered-lob',
+      name: 'Layered lob',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/layered-lob.png',
+      widthFactor: 1.08,
+      heightFactor: 2.25,
+      verticalOffsetFactor: 0.62,
+    ),
+    TryOnStyle(
+      id: 'long-curly',
+      name: 'Long curls',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/long-curly.png',
+      widthFactor: 1.18,
+      heightFactor: 3.15,
+      verticalOffsetFactor: 1.02,
+    ),
+    TryOnStyle(
+      id: 'sleek-bob',
+      name: 'Sleek bob',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/sleek-bob.png',
+      widthFactor: 1.05,
+      heightFactor: 2.15,
+      verticalOffsetFactor: 0.58,
+    ),
+    TryOnStyle(
+      id: 'box-braids',
+      name: 'Box braids',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/box-braids.png',
+      widthFactor: 1.08,
+      heightFactor: 3.35,
+      verticalOffsetFactor: 1.12,
+    ),
+    TryOnStyle(
+      id: 'high-ponytail',
+      name: 'High ponytail',
+      category: TryOnCategory.hairstyle,
+      assetPath: 'assets/tryon/hair/high-ponytail.png',
+      widthFactor: 1.18,
+      heightFactor: 3.1,
+      verticalOffsetFactor: 0.72,
+    ),
+    TryOnStyle(
+      id: 'full-beard-black',
+      name: 'Full beard',
+      category: TryOnCategory.beard,
+      assetPath: 'assets/tryon/beard/full-beard.png',
+    ),
+    TryOnStyle(
+      id: 'full-beard-brown',
+      name: 'Brown beard',
+      category: TryOnCategory.beard,
+      assetPath: 'assets/tryon/beard/full-beard.png',
+      tint: Color(0xff69402e),
+    ),
+    TryOnStyle(
+      id: 'burgundy-gold',
+      name: 'Burgundy gold',
+      category: TryOnCategory.nailArt,
+      assetPath: 'assets/tryon/nail/burgundy-gold.png',
+    ),
+    TryOnStyle(
+      id: 'rose-gold',
+      name: 'Rose gold',
+      category: TryOnCategory.nailArt,
+      assetPath: 'assets/tryon/nail/burgundy-gold.png',
+      tint: Color(0xffc87878),
+    ),
   ];
 
-  late AnimationController _meshPulseController;
+  final _picker = ImagePicker();
+  final _detector = FaceDetectionService();
+  final _renderer = ArOverlayRenderer();
+  final _prompt = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _meshPulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-  }
+  Uint8List? _photo;
+  Size? _photoSize;
+  Face? _face;
+  TryOnCategory _category = TryOnCategory.hairstyle;
+  TryOnStyle _style = _styles.first;
+  Offset _adjustment = Offset.zero;
+  Offset _startAdjustment = Offset.zero;
+  Offset _startFocalPoint = Offset.zero;
+  double _scale = 1;
+  double _startScale = 1;
+  double _rotation = 0;
+  double _startRotation = 0;
+  bool _working = false;
+  String _status = 'Upload a photo, then tap a style model below.';
 
   @override
   void dispose() {
-    _meshPulseController.dispose();
+    _detector.dispose();
+    _prompt.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    final selected = await _picker.pickImage(
+      source: source,
+      imageQuality: 95,
+      maxWidth: 1600,
+    );
+    if (selected == null) return;
+    setState(() {
+      _working = true;
+      _status = 'Preparing your photo...';
+    });
+    final selectedCategory = _category;
+
+    try {
+      final bytes = await selected.readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) throw StateError('Could not read this photo.');
+      final faces = selectedCategory == TryOnCategory.nailArt
+          ? <Face>[]
+          : await _detector.detectFaces(InputImage.fromFilePath(selected.path));
+      final face = faces.isEmpty
+          ? null
+          : faces.reduce(
+              (a, b) =>
+                  a.boundingBox.width * a.boundingBox.height >
+                      b.boundingBox.width * b.boundingBox.height
+                  ? a
+                  : b,
+            );
+      if (!mounted) return;
+      setState(() {
+        _photo = bytes;
+        _photoSize = Size(decoded.width.toDouble(), decoded.height.toDouble());
+        _face = face;
+        _resetTransform();
+        _status = selectedCategory == TryOnCategory.nailArt
+            ? 'Hand photo ready. Drag and resize the nail model over your fingertips.'
+            : face == null
+            ? 'No face found. Nail models still work; use a clearer portrait for hair or beard.'
+            : 'Photo ready. Tap any model to convert the preview.';
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _status =
+              'Could not process this photo. Try a clear, upright photo with the face visible.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  void _selectCategory(TryOnCategory category) {
+    setState(() {
+      _category = category;
+      _style = _styles.firstWhere((style) => style.category == category);
+      _resetTransform();
+      _status = category == TryOnCategory.nailArt
+          ? _photo == null
+                ? 'Upload a top-down hand photo with fingers slightly spread.'
+                : 'Drag and resize the nail model over your fingertips.'
+          : _photo == null
+          ? 'Upload a clear, upright portrait, then tap a style model.'
+          : 'Tap a model below to update the converted preview.';
+    });
+  }
+
+  void _selectStyle(TryOnStyle style) {
+    setState(() {
+      _style = style;
+      _resetTransform();
+      _status = _photo == null
+          ? 'Now upload a photo to try ${style.name}.'
+          : '${style.name} applied automatically.';
+    });
+  }
+
+  void _applyPrompt() {
+    final prompt = _prompt.text.trim().toLowerCase();
+    if (prompt.isEmpty) {
+      setState(() => _status = 'Describe the style you want first.');
+      return;
+    }
+    final category = prompt.contains('beard') || prompt.contains('moustache')
+        ? TryOnCategory.beard
+        : prompt.contains('nail')
+        ? TryOnCategory.nailArt
+        : TryOnCategory.hairstyle;
+    final candidates = _styles.where((style) => style.category == category);
+    final match = candidates.firstWhere(
+      (style) => style.name.toLowerCase().split(' ').any(prompt.contains),
+      orElse: () => candidates.first,
+    );
+    setState(() {
+      _category = category;
+      _style = match;
+      _resetTransform();
+      _status = '${match.name} selected from your prompt.';
+    });
+  }
+
+  void _resetTransform() {
+    _adjustment = Offset.zero;
+    _scale = 1;
+    _rotation = 0;
   }
 
   @override
   Widget build(BuildContext context) {
+    final models = _styles
+        .where((style) => style.category == _category)
+        .toList();
     return Scaffold(
-      backgroundColor: Colors.black, 
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          'AR SMART MIRROR',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2.0,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        centerTitle: true,
-      ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 📷 LAYER 1: ISP Matrix Background
-          _buildIspMatrixBackground(),
-          
-          // 📡 LAYER 2: FaceMesh targeting reticle CustomPainter
-          _buildFaceMeshOverlay(),
-          
-          // 🎭 LAYER 3: AR Local Asset Matrix (Tracking Logic)
-          if (_selectedStyle != null)
-            _buildArOverlay(),
-          
-          // 🎛️ LAYER 4: UI Controls / Carousel
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildStyleCarousel(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIspMatrixBackground() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.center,
-          radius: 1.5,
-          colors: [
-            Colors.blueGrey.shade900,
-            Colors.black87,
-            Colors.black,
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: Stack(
-        children: [
-          // Grid overlay for "camera stream matrix" feel
-          CustomPaint(
-            size: Size.infinite,
-            painter: _GridPainter(opacity: 0.1),
-          ),
-          // Subtle glowing center node
-          Center(
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryBlue.withOpacity(0.15),
-                    blurRadius: 120,
-                    spreadRadius: 60,
-                  )
-                ],
-              ),
-            ).animate(onPlay: (c) => c.repeat(reverse: true))
-             .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.15, 1.15), duration: 3.seconds)
-             .fade(duration: 3.seconds),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFaceMeshOverlay() {
-    return Center(
-      child: AnimatedBuilder(
-        animation: _meshPulseController,
-        builder: (context, child) {
-          return CustomPaint(
-            size: const Size(250, 320),
-            painter: _FaceMeshPainter(
-              pulseValue: _meshPulseController.value,
-              color: Colors.cyanAccent,
+      backgroundColor: const Color(0xfff7f3f0),
+      appBar: AppBar(title: const Text('AI Virtual Try-On')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Upload your photo',
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildArOverlay() {
-    return Center(
-      child: IgnorePointer(
-        child: Container(
-          width: 300,
-          height: 350,
-          alignment: Alignment.topCenter,
-          child: Column(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 20),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
-                      boxShadow: [
-                        BoxShadow(color: AppTheme.primaryBlue.withOpacity(0.2), blurRadius: 20)
-                      ]
-                    ),
-                    child: Text(
-                      'APPLYING: ${_selectedStyle?.toUpperCase()}',
-                      style: const TextStyle(
-                        color: Colors.white, 
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
+            const SizedBox(height: 4),
+            const Text('Then tap a model to instantly preview the style.'),
+            const SizedBox(height: 14),
+            _ResultPreview(
+              photo: _photo,
+              photoSize: _photoSize,
+              face: _face,
+              category: _category,
+              style: _style,
+              renderer: _renderer,
+              adjustment: _adjustment,
+              scale: _scale,
+              rotation: _rotation,
+              onGestureStart: (details) {
+                _startAdjustment = _adjustment;
+                _startFocalPoint = details.focalPoint;
+                _startScale = _scale;
+                _startRotation = _rotation;
+              },
+              onGestureUpdate: (details) => setState(() {
+                _adjustment =
+                    _startAdjustment + details.focalPoint - _startFocalPoint;
+                _scale = (_startScale * details.scale).clamp(0.3, 3);
+                _rotation = _startRotation + details.rotation;
+              }),
+              onChoosePhoto: () => _pickPhoto(ImageSource.gallery),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _working
+                        ? null
+                        : () => _pickPhoto(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Upload photo'),
                   ),
                 ),
-              ).animate(key: ValueKey(_selectedStyle))
-               .slideY(begin: -1.0, end: 0.0, curve: Curves.easeOutBack, duration: 500.ms)
-               .fadeIn(duration: 500.ms),
-              
-              const SizedBox(height: 40),
-              Icon(
-                Icons.face_retouching_natural,
-                size: 150,
-                color: Colors.white.withOpacity(0.9),
-              ).animate(key: ValueKey('icon_$_selectedStyle'))
-               .scale(begin: const Offset(0.3, 0.3), end: const Offset(1.0, 1.0), curve: Curves.elasticOut, duration: 800.ms)
-               .fadeIn(duration: 400.ms),
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  onPressed: _working
+                      ? null
+                      : () => _pickPhoto(ImageSource.camera),
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  tooltip: 'Take photo',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (_working)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 10),
+                    child: SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                Expanded(child: Text(_status)),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Choose a model',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 10),
+            SegmentedButton<TryOnCategory>(
+              segments: const [
+                ButtonSegment(
+                  value: TryOnCategory.hairstyle,
+                  label: Text('Hair'),
+                ),
+                ButtonSegment(value: TryOnCategory.beard, label: Text('Beard')),
+                ButtonSegment(
+                  value: TryOnCategory.nailArt,
+                  label: Text('Nails'),
+                ),
+              ],
+              selected: {_category},
+              onSelectionChanged: (value) => _selectCategory(value.first),
+            ),
+            if (_category == TryOnCategory.nailArt) ...[
+              const SizedBox(height: 12),
+              _NailPhotoGuide(
+                onReset: () => setState(() {
+                  _resetTransform();
+                  _status =
+                      'Nail position reset. Drag it onto your fingertips.';
+                }),
+              ),
             ],
-          ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 142,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: models.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final model = models[index];
+                  return _ModelCard(
+                    style: model,
+                    selected: _style.id == model.id,
+                    onTap: () => _selectStyle(model),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _prompt,
+              onSubmitted: (_) => _applyPrompt(),
+              decoration: InputDecoration(
+                labelText: 'Describe the style you want',
+                hintText: 'Example: warm brown haircut',
+                suffixIcon: IconButton(
+                  onPressed: _applyPrompt,
+                  icon: const Icon(Icons.auto_awesome),
+                ),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tip: drag, pinch, or rotate the applied model for a better fit.',
+            ),
+          ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildStyleCarousel() {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          height: 180,
-          padding: const EdgeInsets.only(top: 24, bottom: 32),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.4),
-            border: Border(top: BorderSide(color: Colors.white.withOpacity(0.2))),
+class _ModelCard extends StatelessWidget {
+  final TryOnStyle style;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ModelCard({
+    required this.style,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 118,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xffdfe8ff) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? const Color(0xff245ca8) : Colors.black12,
+            width: selected ? 2 : 1,
           ),
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _styleAdjustments.length,
-            itemBuilder: (context, index) {
-              final style = _styleAdjustments[index];
-              final isSelected = _selectedStyle == style['name'];
-              
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedStyle = style['name'];
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                  width: 130,
-                  margin: const EdgeInsets.only(right: 16),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppTheme.primaryBlue.withOpacity(0.5) : Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: isSelected ? Colors.white.withOpacity(0.8) : Colors.white.withOpacity(0.2),
-                      width: isSelected ? 1.5 : 1,
-                    ),
-                    boxShadow: isSelected 
-                      ? [BoxShadow(color: AppTheme.primaryBlue.withOpacity(0.4), blurRadius: 20, spreadRadius: 2)]
-                      : [],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        style['icon']!,
-                        style: const TextStyle(fontSize: 32),
-                      ).animate(target: isSelected ? 1 : 0)
-                       .scale(begin: const Offset(1.0, 1.0), end: const Offset(1.2, 1.2), duration: 200.ms),
-                      const SizedBox(height: 16),
-                      Text(
-                        style['name']!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.white70,
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                          fontSize: 13,
-                          letterSpacing: 0.5,
+        ),
+        child: Column(
+          children: [
+            Expanded(child: _StyleImage(style: style)),
+            const SizedBox(height: 5),
+            Text(
+              style.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NailPhotoGuide extends StatelessWidget {
+  final VoidCallback onReset;
+
+  const _NailPhotoGuide({required this.onReset});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: const Color(0xfffff4df),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.back_hand_outlined, size: 30),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'For nails: place one hand flat on a plain surface, point '
+                'fingertips upward, spread fingers slightly, and photograph '
+                'straight from above. Let the hand fill most of the photo.',
+              ),
+            ),
+            IconButton(
+              onPressed: onReset,
+              tooltip: 'Reset nail position',
+              icon: const Icon(Icons.restart_alt),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResultPreview extends StatelessWidget {
+  final Uint8List? photo;
+  final Size? photoSize;
+  final Face? face;
+  final TryOnCategory category;
+  final TryOnStyle style;
+  final ArOverlayRenderer renderer;
+  final Offset adjustment;
+  final double scale;
+  final double rotation;
+  final ValueChanged<ScaleStartDetails> onGestureStart;
+  final ValueChanged<ScaleUpdateDetails> onGestureUpdate;
+  final VoidCallback onChoosePhoto;
+
+  const _ResultPreview({
+    required this.photo,
+    required this.photoSize,
+    required this.face,
+    required this.category,
+    required this.style,
+    required this.renderer,
+    required this.adjustment,
+    required this.scale,
+    required this.rotation,
+    required this.onGestureStart,
+    required this.onGestureUpdate,
+    required this.onChoosePhoto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (photo == null || photoSize == null) {
+      return Card(
+        child: AspectRatio(
+          aspectRatio: 4 / 3,
+          child: Center(
+            child: FilledButton.tonalIcon(
+              onPressed: onChoosePhoto,
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: const Text('Upload photo'),
+            ),
+          ),
+        ),
+      );
+    }
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: AspectRatio(
+        aspectRatio: photoSize!.width / photoSize!.height,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final placement = _placement(constraints.biggest);
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.memory(photo!, fit: BoxFit.fill),
+                if (placement != null)
+                  Positioned(
+                    left: placement.center.dx - placement.width / 2,
+                    top: placement.center.dy - placement.height / 2,
+                    width: placement.width,
+                    height: placement.height,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onScaleStart: onGestureStart,
+                      onScaleUpdate: onGestureUpdate,
+                      child: Padding(
+                        padding: category == TryOnCategory.nailArt
+                            ? const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 18,
+                              )
+                            : EdgeInsets.zero,
+                        child: Transform.rotate(
+                          angle: placement.rotation,
+                          child: _StyleImage(style: style),
                         ),
                       ),
-                    ],
+                    ),
                   ),
+                Positioned(
+                  left: 8,
+                  bottom: 8,
+                  child: Chip(label: Text('Result: ${style.name}')),
                 ),
-              ).animate()
-               .fadeIn(delay: (index * 150).ms, duration: 600.ms)
-               .slideY(begin: 1.0, end: 0.0, curve: Curves.easeOutBack, duration: 700.ms, delay: (index * 150).ms);
-            },
-          ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
+
+  _Placement? _placement(Size viewSize) {
+    final imageScale = viewSize.width / photoSize!.width;
+    if (category == TryOnCategory.nailArt) {
+      return _Placement(
+        center:
+            Offset(viewSize.width * 0.47, viewSize.height * 0.42) + adjustment,
+        width: viewSize.width * 0.5 * scale * style.size,
+        height: viewSize.height * 0.13 * scale * style.size,
+        rotation: rotation,
+      );
+    }
+    if (face == null) return null;
+    if (category == TryOnCategory.beard) {
+      final overlay = renderer.calculateBeardOverlay(face!);
+      return _Placement(
+        center: overlay.center * imageScale + adjustment,
+        width: overlay.width * imageScale * scale * style.size,
+        height: overlay.height * imageScale * scale * style.size,
+        rotation: -overlay.rotation + rotation,
+      );
+    }
+    final overlay = renderer.calculateHairstyleOverlay(face!);
+    return _Placement(
+      center:
+          overlay.center * imageScale +
+          Offset(0, overlay.height * imageScale * style.verticalOffsetFactor) +
+          adjustment,
+      width:
+          overlay.width * imageScale * scale * style.size * style.widthFactor,
+      height:
+          overlay.height * imageScale * scale * style.size * style.heightFactor,
+      rotation: -overlay.rotation + rotation,
+    );
+  }
 }
 
-class _GridPainter extends CustomPainter {
-  final double opacity;
-  _GridPainter({this.opacity = 0.1});
+class _StyleImage extends StatelessWidget {
+  final TryOnStyle style;
+
+  const _StyleImage({required this.style});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(opacity)
-      ..strokeWidth = 0.5;
-
-    const double step = 40.0;
-    for (double i = 0; i < size.width; i += step) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    }
-    for (double i = 0; i < size.height; i += step) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
-    }
+  Widget build(BuildContext context) {
+    final image = Image.asset(style.assetPath, fit: BoxFit.contain);
+    final tint = style.tint;
+    if (tint == null) return image;
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(tint, BlendMode.color),
+      child: image,
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _FaceMeshPainter extends CustomPainter {
-  final double pulseValue;
-  final Color color;
+class _Placement {
+  final Offset center;
+  final double width;
+  final double height;
+  final double rotation;
 
-  _FaceMeshPainter({required this.pulseValue, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color.withOpacity(0.3 + (pulseValue * 0.5))
-      ..strokeWidth = 1.5 + (pulseValue * 1.0)
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final blurPaint = Paint()
-      ..color = color.withOpacity(0.2 + (pulseValue * 0.3))
-      ..strokeWidth = 4.0
-      ..style = PaintingStyle.stroke
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0);
-
-    final path = Path();
-
-    // Draw a stylized bounding box / mesh outline
-    const cornerLength = 40.0;
-
-    void drawCorner(Offset start, Offset control, Offset end) {
-      final cornerPath = Path()
-        ..moveTo(start.dx, start.dy)
-        ..quadraticBezierTo(control.dx, control.dy, end.dx, end.dy);
-      canvas.drawPath(cornerPath, blurPaint);
-      canvas.drawPath(cornerPath, paint);
-    }
-
-    // Top Left
-    drawCorner(
-      const Offset(0, cornerLength),
-      const Offset(0, 0),
-      const Offset(cornerLength, 0),
-    );
-
-    // Top Right
-    drawCorner(
-      Offset(size.width - cornerLength, 0),
-      Offset(size.width, 0),
-      Offset(size.width, cornerLength),
-    );
-
-    // Bottom Right
-    drawCorner(
-      Offset(size.width, size.height - cornerLength),
-      Offset(size.width, size.height),
-      Offset(size.width - cornerLength, size.height),
-    );
-
-    // Bottom Left
-    drawCorner(
-      Offset(cornerLength, size.height),
-      Offset(0, size.height),
-      Offset(0, size.height - cornerLength),
-    );
-
-    // Center targeting reticles
-    final centerPaint = Paint()
-      ..color = color.withOpacity(0.5 + (pulseValue * 0.5))
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-      
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final cr = 20.0 + (pulseValue * 5.0);
-    
-    canvas.drawCircle(Offset(cx, cy), cr, centerPaint);
-    canvas.drawLine(Offset(cx, cy - cr - 10), Offset(cx, cy - cr + 5), centerPaint);
-    canvas.drawLine(Offset(cx, cy + cr - 5), Offset(cx, cy + cr + 10), centerPaint);
-    canvas.drawLine(Offset(cx - cr - 10, cy), Offset(cx - cr + 5, cy), centerPaint);
-    canvas.drawLine(Offset(cx + cr - 5, cy), Offset(cx + cr + 10, cy), centerPaint);
-
-    // Some mesh-like lines inside
-    final innerMeshPaint = Paint()
-      ..color = color.withOpacity(0.1 + (pulseValue * 0.15))
-      ..strokeWidth = 0.5
-      ..style = PaintingStyle.stroke;
-      
-    final meshPath = Path()
-      ..moveTo(cx - 50, cy - 80)
-      ..lineTo(cx + 50, cy - 80)
-      ..lineTo(cx + 80, cy)
-      ..lineTo(cx + 50, cy + 80)
-      ..lineTo(cx - 50, cy + 80)
-      ..lineTo(cx - 80, cy)
-      ..close();
-      
-    meshPath.moveTo(cx - 50, cy - 80);
-    meshPath.lineTo(cx, cy);
-    meshPath.lineTo(cx + 50, cy - 80);
-    
-    meshPath.moveTo(cx + 80, cy);
-    meshPath.lineTo(cx, cy);
-    meshPath.lineTo(cx + 50, cy + 80);
-    
-    meshPath.moveTo(cx - 50, cy + 80);
-    meshPath.lineTo(cx, cy);
-    meshPath.lineTo(cx - 80, cy);
-      
-    canvas.drawPath(meshPath, innerMeshPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _FaceMeshPainter oldDelegate) {
-    return oldDelegate.pulseValue != pulseValue || oldDelegate.color != color;
-  }
+  const _Placement({
+    required this.center,
+    required this.width,
+    required this.height,
+    required this.rotation,
+  });
 }
