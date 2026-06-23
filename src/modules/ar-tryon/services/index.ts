@@ -3,3 +3,5 @@ export { BeardService } from './beard.service';
 export { NailService } from './nail.service';
 export { TryOnResultService } from './tryon-result.service';
 export { RecommendationService } from './recommendation.service';
+export { ThreeDTryOnService } from './three-d-tryon.service';
+export { PremiumEntitlementService } from './premium-entitlement.service';

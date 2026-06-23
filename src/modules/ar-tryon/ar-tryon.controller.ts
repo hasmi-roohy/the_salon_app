@@ -16,6 +16,8 @@ import {
   NailService,
   TryOnResultService,
   RecommendationService,
+  ThreeDTryOnService,
+  PremiumEntitlementService,
 } from './services';
 import {
   CreateHairstyleDto,
@@ -31,6 +33,8 @@ import {
   GetTryOnResultsDto,
   ShareTryOnResultDto,
   GetRecommendationsDto,
+  GenerateThreeDTryOnDto,
+  VerifyPremiumPurchaseDto,
 } from './dto';
 
 @Controller('api/ar-tryon')
@@ -41,7 +45,26 @@ export class ArTryonController {
     private nailService: NailService,
     private tryOnResultService: TryOnResultService,
     private recommendationService: RecommendationService,
+    private threeDTryOnService: ThreeDTryOnService,
+    private premiumEntitlementService: PremiumEntitlementService,
   ) {}
+
+  // ==================== PREMIUM AI IMAGE TRY-ON ====================
+
+  @Post('ai-image/generate')
+  async generateThreeDTryOn(@Body() dto: GenerateThreeDTryOnDto) {
+    return this.threeDTryOnService.generate(dto);
+  }
+
+  @Post('premium/verify')
+  async verifyPremiumPurchase(@Body() dto: VerifyPremiumPurchaseDto) {
+    return this.premiumEntitlementService.verifyAndGrant(dto);
+  }
+
+  @Get('premium/entitlements/:userId')
+  async getPremiumEntitlements(@Param('userId') userId: string) {
+    return this.premiumEntitlementService.getForUser(userId);
+  }
 
   // ==================== HAIRSTYLES ====================
 

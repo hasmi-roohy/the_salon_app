@@ -9,7 +9,7 @@ class FaceDetectionService {
       enableContours: true,
       enableLandmarks: true,
       enableTracking: true,
-      performanceMode: FaceDetectorMode.fast,
+      performanceMode: FaceDetectorMode.accurate,
       minFaceSize: 0.15,
     ),
   );

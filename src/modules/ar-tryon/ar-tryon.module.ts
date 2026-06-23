@@ -7,6 +7,8 @@ import {
   NailService,
   TryOnResultService,
   RecommendationService,
+  ThreeDTryOnService,
+  PremiumEntitlementService,
 } from './services';
 import {
   Hairstyle,
@@ -33,6 +35,8 @@ import {
     NailService,
     TryOnResultService,
     RecommendationService,
+    ThreeDTryOnService,
+    PremiumEntitlementService,
   ],
   exports: [
     HairstyleService,
@@ -40,6 +44,8 @@ import {
     NailService,
     TryOnResultService,
     RecommendationService,
+    ThreeDTryOnService,
+    PremiumEntitlementService,
   ],
 })
 export class ArTryonModule {}
