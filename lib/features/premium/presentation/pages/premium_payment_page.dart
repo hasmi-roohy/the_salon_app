@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/premium_access_controller.dart';
 import '../../data/premium_entitlement_repository.dart';
 import '../../domain/premium_models.dart';
 
-enum PaymentMethod { googlePlay, upi, card, wallet }
+enum PaymentMethod { upi, card, wallet, netBanking, paypal }
 
 class PremiumPaymentPage extends StatefulWidget {
-  final PremiumPlan plan;
+  final Set<PremiumFeature> selectedFeatures;
+  final int totalAmount;
   final bool allowLocalDevelopmentSimulation;
 
   const PremiumPaymentPage({
     super.key,
-    required this.plan,
+    required this.selectedFeatures,
+    required this.totalAmount,
     this.allowLocalDevelopmentSimulation = false,
   });
 
@@ -22,22 +25,38 @@ class PremiumPaymentPage extends StatefulWidget {
 
 class _PremiumPaymentPageState extends State<PremiumPaymentPage> {
   final _entitlementRepository = PremiumEntitlementRepository();
-  PaymentMethod _method = PaymentMethod.googlePlay;
+  final _upiController = TextEditingController(text: 'username@upi');
+  final _cardController = TextEditingController();
+  final _expiryController = TextEditingController();
+  final _cvvController = TextEditingController();
+  final _bankSearchController = TextEditingController();
+  PaymentMethod _method = PaymentMethod.upi;
   bool _processing = false;
+  bool _saveCard = true;
+
+  @override
+  void dispose() {
+    _upiController.dispose();
+    _cardController.dispose();
+    _expiryController.dispose();
+    _cvvController.dispose();
+    _bankSearchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _completeDevelopmentPayment() async {
     setState(() => _processing = true);
     final result = widget.allowLocalDevelopmentSimulation
         ? PremiumVerificationResult(
             verified: true,
-            features: allPremiumFeatures,
-            message: 'Local widget-test verification completed.',
+            features: widget.selectedFeatures,
+            message: 'Local checkout verification completed.',
           )
         : await _entitlementRepository.verifyDevelopmentPurchase(
             userId: 'demo-user',
-            features: allPremiumFeatures,
+            features: widget.selectedFeatures,
             provider: _providerName(_method),
-            productId: widget.plan.id,
+            productId: 'selected_features_monthly',
           );
     if (!mounted) return;
     setState(() => _processing = false);
@@ -52,10 +71,9 @@ class _PremiumPaymentPageState extends State<PremiumPaymentPage> {
       context: context,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.verified, color: Colors.green, size: 42),
-        title: const Text('Premium unlocked'),
+        title: const Text('Payment successful'),
         content: const Text(
-          'Development entitlement applied. Production must unlock only after '
-          'backend verification of the store or payment-provider receipt.',
+          'Premium features unlocked for this development session.',
         ),
         actions: [
           FilledButton(
@@ -69,84 +87,143 @@ class _PremiumPaymentPageState extends State<PremiumPaymentPage> {
   }
 
   String _providerName(PaymentMethod method) => switch (method) {
-    PaymentMethod.googlePlay => 'google_play',
     PaymentMethod.upi => 'upi',
     PaymentMethod.card => 'card',
     PaymentMethod.wallet => 'wallet',
+    PaymentMethod.netBanking => 'net_banking',
+    PaymentMethod.paypal => 'paypal',
   };
+
+  Future<void> _launchUpiIntent(String label) async {
+    final uri = Uri(
+      scheme: 'upi',
+      host: 'pay',
+      queryParameters: {
+        'pa': 'salon@upi',
+        'pn': 'The Salon App',
+        'am': widget.totalAmount.toString(),
+        'cu': 'INR',
+        'tn': 'Premium features checkout',
+      },
+    );
+    var launched = false;
+    try {
+      launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      launched = false;
+    }
+    if (!mounted) return;
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No UPI app opened for $label')),
+      );
+    }
+  }
+
+  void _showCouponSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Have a coupon?', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              const TextField(
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Coupon code',
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Apply'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final amount = formatRupees(widget.totalAmount);
     return Scaffold(
-      appBar: AppBar(title: const Text('Payment')),
+      appBar: AppBar(
+        title: const Text('Checkout'),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: Center(child: Text('3/3')),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.workspace_premium_outlined),
-              title: Text(widget.plan.name),
-              subtitle: const Text(
-                'Includes AI Hair, AI Beard, and AI Nail premium features',
-              ),
-              trailing: Text(
-                widget.plan.priceLabel,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
+          _OrderSummaryCard(
+            selectedFeatures: widget.selectedFeatures,
+            totalAmount: widget.totalAmount,
+            onCouponTap: _showCouponSheet,
           ),
           const SizedBox(height: 16),
-          Text(
-            'Choose payment method',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Pay Using', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
-          RadioGroup<PaymentMethod>(
-            groupValue: _method,
-            onChanged: (value) {
-              if (value != null) setState(() => _method = value);
-            },
-            child: const Column(
-              children: [
-                _PaymentTile(
-                  value: PaymentMethod.googlePlay,
-                  icon: Icons.play_circle_outline,
-                  title: 'Google Play Billing',
-                  subtitle: 'Recommended for Play Store digital subscriptions',
-                ),
-                _PaymentTile(
-                  value: PaymentMethod.upi,
-                  icon: Icons.qr_code_2,
-                  title: 'UPI',
-                  subtitle: 'Availability depends on store and regional policy',
-                ),
-                _PaymentTile(
-                  value: PaymentMethod.card,
-                  icon: Icons.credit_card,
-                  title: 'Credit / Debit Card',
-                  subtitle: 'Use through an approved payment provider',
-                ),
-                _PaymentTile(
-                  value: PaymentMethod.wallet,
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'Wallet',
-                  subtitle: 'Provider availability varies by country',
-                ),
-              ],
+          _PaymentAccordionTile(
+            selected: _method == PaymentMethod.upi,
+            title: 'UPI - Recommended',
+            icon: Icons.qr_code_2,
+            onTap: () => setState(() => _method = PaymentMethod.upi),
+            child: _UpiSection(
+              controller: _upiController,
+              onAnyUpiTap: () => _launchUpiIntent('any UPI app'),
+              onAppTap: _launchUpiIntent,
             ),
+          ),
+          _PaymentAccordionTile(
+            selected: _method == PaymentMethod.card,
+            title: 'Cards',
+            icon: Icons.credit_card,
+            onTap: () => setState(() => _method = PaymentMethod.card),
+            child: _CardSection(
+              cardController: _cardController,
+              expiryController: _expiryController,
+              cvvController: _cvvController,
+              saveCard: _saveCard,
+              onSaveCardChanged: (value) => setState(() => _saveCard = value),
+            ),
+          ),
+          _PaymentAccordionTile(
+            selected: _method == PaymentMethod.wallet,
+            title: 'Wallets',
+            icon: Icons.account_balance_wallet_outlined,
+            onTap: () => setState(() => _method = PaymentMethod.wallet),
+            child: const _WalletSection(),
+          ),
+          _PaymentAccordionTile(
+            selected: _method == PaymentMethod.netBanking,
+            title: 'Net Banking',
+            icon: Icons.account_balance,
+            onTap: () => setState(() => _method = PaymentMethod.netBanking),
+            child: _NetBankingSection(controller: _bankSearchController),
+          ),
+          _PaymentAccordionTile(
+            selected: _method == PaymentMethod.paypal,
+            title: 'PayPal',
+            icon: Icons.public,
+            onTap: () => setState(() => _method = PaymentMethod.paypal),
+            child: const _PayPalSection(),
           ),
           const SizedBox(height: 14),
-          const Card(
-            color: Color(0xfffff4df),
-            child: Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'Development mode: no money will be charged. This button '
-                'simulates a backend-verified entitlement for UI testing.',
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
           FilledButton.icon(
             onPressed: _processing ? null : _completeDevelopmentPayment,
             icon: _processing
@@ -154,10 +231,17 @@ class _PremiumPaymentPageState extends State<PremiumPaymentPage> {
                     dimension: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.lock_open_outlined),
-            label: Text(
-              _processing ? 'Verifying...' : 'Complete development payment',
-            ),
+                : const Icon(Icons.lock_outline),
+            label: Text(_processing ? 'Verifying...' : 'Pay $amount Securely'),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.lock_outline, size: 16),
+              SizedBox(width: 6),
+              Text('Razorpay Secure - 256-bit encrypted'),
+            ],
           ),
         ],
       ),
@@ -165,28 +249,351 @@ class _PremiumPaymentPageState extends State<PremiumPaymentPage> {
   }
 }
 
-class _PaymentTile extends StatelessWidget {
-  final PaymentMethod value;
-  final IconData icon;
-  final String title;
-  final String subtitle;
+class _OrderSummaryCard extends StatelessWidget {
+  final Set<PremiumFeature> selectedFeatures;
+  final int totalAmount;
+  final VoidCallback onCouponTap;
 
-  const _PaymentTile({
-    required this.value,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
+  const _OrderSummaryCard({
+    required this.selectedFeatures,
+    required this.totalAmount,
+    required this.onCouponTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: RadioListTile<PaymentMethod>(
-        value: value,
-        secondary: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Order Summary', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 10),
+            for (final feature in selectedFeatures)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(feature.label)),
+                    Text(formatRupees(feature.monthlyPrice)),
+                  ],
+                ),
+              ),
+            const Divider(height: 18),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Total',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Text(
+                  '${formatRupees(totalAmount)} / month',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: onCouponTap,
+                child: const Text('Have coupon?'),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _PaymentAccordionTile extends StatelessWidget {
+  final bool selected;
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _PaymentAccordionTile({
+    required this.selected,
+    required this.title,
+    required this.icon,
+    required this.onTap,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                  ),
+                  const SizedBox(width: 10),
+                  Icon(icon),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              AnimatedCrossFade(
+                firstChild: const SizedBox.shrink(),
+                secondChild: Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: child,
+                ),
+                crossFadeState: selected
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 180),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UpiSection extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onAnyUpiTap;
+  final ValueChanged<String> onAppTap;
+
+  const _UpiSection({
+    required this.controller,
+    required this.onAnyUpiTap,
+    required this.onAppTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'UPI ID',
+            hintText: 'username@paytm',
+          ),
+        ),
+        const SizedBox(height: 10),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xffd7e2ea)),
+          ),
+          child: ListTile(
+            onTap: onAnyUpiTap,
+            leading: const Icon(Icons.send_to_mobile_outlined),
+            title: const Text('Pay by any UPI App'),
+            subtitle: const Text('Opens installed UPI apps on this phone'),
+            trailing: const Icon(Icons.chevron_right),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _PayAppButton(
+                label: 'GPay',
+                onTap: () => onAppTap('GPay'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PayAppButton(
+                label: 'PhonePe',
+                onTap: () => onAppTap('PhonePe'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PayAppButton(
+                label: 'Paytm',
+                onTap: () => onAppTap('Paytm'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CardSection extends StatelessWidget {
+  final TextEditingController cardController;
+  final TextEditingController expiryController;
+  final TextEditingController cvvController;
+  final bool saveCard;
+  final ValueChanged<bool> onSaveCardChanged;
+
+  const _CardSection({
+    required this.cardController,
+    required this.expiryController,
+    required this.cvvController,
+    required this.saveCard,
+    required this.onSaveCardChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextField(
+          controller: cardController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Card Number',
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: expiryController,
+                keyboardType: TextInputType.datetime,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'MM/YY',
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: cvvController,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'CVV',
+                ),
+              ),
+            ),
+          ],
+        ),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          value: saveCard,
+          onChanged: (value) => onSaveCardChanged(value ?? false),
+          title: const Text('Save card for next time'),
+        ),
+      ],
+    );
+  }
+}
+
+class _WalletSection extends StatelessWidget {
+  const _WalletSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: const [
+        Expanded(child: _PayAppButton(label: 'PhonePe')),
+        SizedBox(width: 8),
+        Expanded(child: _PayAppButton(label: 'Amazon Pay')),
+        SizedBox(width: 8),
+        Expanded(child: _PayAppButton(label: 'Paytm Wallet')),
+      ],
+    );
+  }
+}
+
+class _NetBankingSection extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _NetBankingSection({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.search),
+            labelText: 'Search bank',
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: const [
+            _BankChip(label: 'SBI'),
+            _BankChip(label: 'HDFC'),
+            _BankChip(label: 'ICICI'),
+            _BankChip(label: 'Axis'),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PayPalSection extends StatelessWidget {
+  const _PayPalSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () {},
+        icon: const Icon(Icons.open_in_browser),
+        label: const Text('Pay with PayPal'),
+      ),
+    );
+  }
+}
+
+class _PayAppButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+
+  const _PayAppButton({required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onTap ?? () {},
+      child: FittedBox(child: Text(label)),
+    );
+  }
+}
+
+class _BankChip extends StatelessWidget {
+  final String label;
+
+  const _BankChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      label: Text(label),
+      onPressed: () {},
     );
   }
 }

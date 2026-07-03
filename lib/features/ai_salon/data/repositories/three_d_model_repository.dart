@@ -145,6 +145,22 @@ class LocalThreeDModelRepository implements ThreeDModelRepository {
       icon: Icons.pan_tool_alt_outlined,
       previewColor: Color(0xffd4a28e),
     ),
+    ThreeDModel(
+      id: 'mehndi-bridal-3d',
+      name: 'Bridal mehndi AI',
+      category: ThreeDCategory.mehndi,
+      assetPath: '',
+      icon: Icons.draw_outlined,
+      previewColor: Color(0xff7b3f22),
+    ),
+    ThreeDModel(
+      id: 'mehndi-arabic-3d',
+      name: 'Arabic mehndi AI',
+      category: ThreeDCategory.mehndi,
+      assetPath: '',
+      icon: Icons.gesture,
+      previewColor: Color(0xff8a4d2c),
+    ),
   ];
 
   @override
@@ -249,6 +265,7 @@ class PremiumThreeDRepository {
       ThreeDCategory.hair => 'hair',
       ThreeDCategory.beard => 'beard',
       ThreeDCategory.nails => 'nails',
+      ThreeDCategory.mehndi => 'mehndi',
     };
   }
 }

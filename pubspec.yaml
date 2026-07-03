@@ -47,6 +47,8 @@ dependencies:
   google_mlkit_face_mesh_detection: ^0.4.2
   google_mlkit_pose_detection: ^0.14.1
   google_mlkit_selfie_segmentation: ^0.10.1
+  url_launcher: ^6.3.2
+  video_player: ^2.11.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

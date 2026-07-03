@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum ThreeDCategory { hair, beard, nails }
+enum ThreeDCategory { hair, beard, nails, mehndi }
 
 class ThreeDModel {
   final String id;
