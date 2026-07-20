@@ -5,7 +5,7 @@ import '../../data/premium_access_controller.dart';
 import '../../data/premium_entitlement_repository.dart';
 import '../../domain/premium_models.dart';
 
-enum PaymentMethod { upi, card, wallet, netBanking, paypal }
+enum PaymentMethod { upi, card, netBanking, paypal }
 
 class PremiumPaymentPage extends StatefulWidget {
   final Set<PremiumFeature> selectedFeatures;
@@ -33,6 +33,7 @@ class _PremiumPaymentPageState extends State<PremiumPaymentPage> {
   PaymentMethod _method = PaymentMethod.upi;
   bool _processing = false;
   bool _saveCard = true;
+  String? _selectedBank;
 
   @override
   void dispose() {
@@ -89,7 +90,6 @@ class _PremiumPaymentPageState extends State<PremiumPaymentPage> {
   String _providerName(PaymentMethod method) => switch (method) {
     PaymentMethod.upi => 'upi',
     PaymentMethod.card => 'card',
-    PaymentMethod.wallet => 'wallet',
     PaymentMethod.netBanking => 'net_banking',
     PaymentMethod.paypal => 'paypal',
   };
@@ -116,6 +116,25 @@ class _PremiumPaymentPageState extends State<PremiumPaymentPage> {
     if (!launched) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No UPI app opened for $label')),
+      );
+    }
+  }
+
+  Future<void> _launchPayPalCheckout() async {
+    final uri = Uri.https('www.paypal.com', '/checkoutnow', {
+      'amount': widget.totalAmount.toString(),
+      'currency': 'INR',
+    });
+    var launched = false;
+    try {
+      launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      launched = false;
+    }
+    if (!mounted) return;
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open PayPal checkout')),
       );
     }
   }
@@ -203,25 +222,25 @@ class _PremiumPaymentPageState extends State<PremiumPaymentPage> {
             ),
           ),
           _PaymentAccordionTile(
-            selected: _method == PaymentMethod.wallet,
-            title: 'Wallets',
-            icon: Icons.account_balance_wallet_outlined,
-            onTap: () => setState(() => _method = PaymentMethod.wallet),
-            child: const _WalletSection(),
-          ),
-          _PaymentAccordionTile(
             selected: _method == PaymentMethod.netBanking,
             title: 'Net Banking',
             icon: Icons.account_balance,
             onTap: () => setState(() => _method = PaymentMethod.netBanking),
-            child: _NetBankingSection(controller: _bankSearchController),
+            child: _NetBankingSection(
+              controller: _bankSearchController,
+              selectedBank: _selectedBank,
+              onBankSelected: (bank) => setState(() {
+                _selectedBank = bank;
+                _bankSearchController.text = bank;
+              }),
+            ),
           ),
           _PaymentAccordionTile(
             selected: _method == PaymentMethod.paypal,
             title: 'PayPal',
             icon: Icons.public,
             onTap: () => setState(() => _method = PaymentMethod.paypal),
-            child: const _PayPalSection(),
+            child: _PayPalSection(onPayPalTap: _launchPayPalCheckout),
           ),
           const SizedBox(height: 14),
           FilledButton.icon(
@@ -503,27 +522,16 @@ class _CardSection extends StatelessWidget {
   }
 }
 
-class _WalletSection extends StatelessWidget {
-  const _WalletSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: const [
-        Expanded(child: _PayAppButton(label: 'PhonePe')),
-        SizedBox(width: 8),
-        Expanded(child: _PayAppButton(label: 'Amazon Pay')),
-        SizedBox(width: 8),
-        Expanded(child: _PayAppButton(label: 'Paytm Wallet')),
-      ],
-    );
-  }
-}
-
 class _NetBankingSection extends StatelessWidget {
   final TextEditingController controller;
+  final String? selectedBank;
+  final ValueChanged<String> onBankSelected;
 
-  const _NetBankingSection({required this.controller});
+  const _NetBankingSection({
+    required this.controller,
+    required this.selectedBank,
+    required this.onBankSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -541,11 +549,13 @@ class _NetBankingSection extends StatelessWidget {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: const [
-            _BankChip(label: 'SBI'),
-            _BankChip(label: 'HDFC'),
-            _BankChip(label: 'ICICI'),
-            _BankChip(label: 'Axis'),
+          children: [
+            for (final bank in const ['SBI', 'HDFC', 'ICICI', 'Axis'])
+              _BankChip(
+                label: bank,
+                selected: selectedBank == bank,
+                onSelected: () => onBankSelected(bank),
+              ),
           ],
         ),
       ],
@@ -554,14 +564,16 @@ class _NetBankingSection extends StatelessWidget {
 }
 
 class _PayPalSection extends StatelessWidget {
-  const _PayPalSection();
+  final VoidCallback onPayPalTap;
+
+  const _PayPalSection({required this.onPayPalTap});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: onPayPalTap,
         icon: const Icon(Icons.open_in_browser),
         label: const Text('Pay with PayPal'),
       ),
@@ -586,14 +598,21 @@ class _PayAppButton extends StatelessWidget {
 
 class _BankChip extends StatelessWidget {
   final String label;
+  final bool selected;
+  final VoidCallback onSelected;
 
-  const _BankChip({required this.label});
+  const _BankChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
+    return ChoiceChip(
       label: Text(label),
-      onPressed: () {},
+      selected: selected,
+      onSelected: (_) => onSelected(),
     );
   }
 }

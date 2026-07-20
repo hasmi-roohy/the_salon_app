@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Summer Internship Report - Shaik Hasmi roohy</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #111827;
+      background: #fff;
+      font-family: "Times New Roman", Georgia, serif;
+      font-size: 13.2px;
+      line-height: 1.42;
+    }
+    .page { break-after: page; }
+    .page:last-child { break-after: auto; }
+    .cover {
+      min-height: 248mm;
+      border: 3px double #111827;
+      padding: 20mm 13mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+    }
+    h1, h2, h3 { margin: 0; color: #0f172a; }
+    h1 { font-size: 25px; text-transform: uppercase; letter-spacing: .3px; }
+    h2 {
+      font-size: 19px;
+      text-align: center;
+      text-transform: uppercase;
+      border-bottom: 1px solid #111827;
+      padding-bottom: 6px;
+      margin-bottom: 14px;
+    }
+    h3 { font-size: 15px; margin: 12px 0 6px; }
+    p { margin: 0 0 8px; text-align: justify; }
+    ul { margin: 4px 0 10px 18px; padding: 0; }
+    li { margin-bottom: 3px; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
+    th, td { border: 1px solid #4b5563; padding: 6px; vertical-align: top; }
+    th { background: #eef2f7; text-align: left; }
+    .university { font-size: 20px; font-weight: 700; text-transform: uppercase; line-height: 1.25; }
+    .dept { font-size: 16px; font-weight: 700; margin-top: 8px; text-transform: uppercase; }
+    .subtitle { font-size: 17px; font-weight: 700; text-transform: uppercase; margin-top: 16px; }
+    .details { width: 82%; margin: 16px auto; text-align: left; font-size: 14.5px; }
+    .details td { border: none; padding: 5px 7px; }
+    .details td:first-child { width: 43%; font-weight: 700; }
+    .center { text-align: center; }
+    .signature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-top: 48px;
+      text-align: center;
+    }
+    .signature-box {
+      min-height: 88px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      font-size: 12.6px;
+    }
+    .line { border-top: 1px solid #111827; height: 1px; margin-bottom: 6px; }
+    .certificate-img {
+      width: 100%;
+      max-height: 205mm;
+      object-fit: contain;
+      display: block;
+      margin: 8px auto 0;
+      border: 1px solid #d1d5db;
+    }
+    .toc-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dotted #9ca3af;
+      padding: 3px 0;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .note { background: #f8fafc; border-left: 4px solid #2563eb; padding: 8px 10px; margin: 10px 0; }
+    .footer { margin-top: 12px; text-align: center; color: #6b7280; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div>
+      <div class="university">Rajiv Gandhi University of Knowledge and Technologies</div>
+      <div class="dept">Department of Computer Science and Engineering</div>
+      <div class="subtitle">Summer Internship Report</div>
+    </div>
+    <div>
+      <h1>AI-Powered Saloon App</h1>
+      <p class="center" style="margin-top:16px;">Submitted in partial fulfilment of the Summer Internship Programme</p>
+      <table class="details">
+        <tr><td>Student Name</td><td>Shaik Hasmi roohy</td></tr>
+        <tr><td>ID No.</td><td>R210448</td></tr>
+        <tr><td>Department</td><td>Computer Science and Engineering</td></tr>
+        <tr><td>Internship Organization</td><td>Saundarya App, Mumbai</td></tr>
+        <tr><td>Internship Type</td><td>Paid Internship</td></tr>
+        <tr><td>Domain</td><td>Flutter App Development</td></tr>
+        <tr><td>Duration</td><td>1 May 2026 to 30 June 2026</td></tr>
+        <tr><td>Project Internal Guide</td><td>Mr. A. Mahendra</td></tr>
+      </table>
+    </div>
+    <div>
+      <p class="center"><strong>Submitted by:</strong> Shaik Hasmi roohy</p>
+      <p class="center"><strong>Academic Year:</strong> 2025-2026</p>
+    </div>
+  </section>
+
+  <section class="page">
+    <h2>Declaration</h2>
+    <p>
+      I, <strong>Shaik Hasmi roohy</strong>, bearing ID No. <strong>R210448</strong>, student of the
+      Department of Computer Science and Engineering, Rajiv Gandhi University of Knowledge and Technologies,
+      hereby declare that this summer internship report titled <strong>"AI-Powered Saloon App"</strong>
+      is a record of the work carried out by me during my paid internship at <strong>Saundarya App, Mumbai</strong>.
+    </p>
+    <p>
+      The work presented in this report is based on my learning, implementation, and contribution during
+      the internship period from <strong>1 May 2026 to 30 June 2026</strong>. This report has been prepared
+      for academic submission and has not been submitted elsewhere for any other degree or diploma.
+    </p>
+    <div style="margin-top:58px;">
+      <p><strong>Place:</strong> RGUKT</p>
+      <p><strong>Date:</strong> 14 July 2026</p>
+    </div>
+    <div style="width:42%; margin-left:auto; margin-top:70px; text-align:center;">
+      <div class="line"></div>
+      <strong>Shaik Hasmi roohy</strong><br>ID No: R210448
+    </div>
+    <div class="footer">II</div>
+  </section>
+
+  <section class="page">
+    <h2>Certificate</h2>
+    <p>
+      This is to certify that <strong>Shaik Hasmi roohy</strong>, ID No. <strong>R210448</strong>, from
+      the Department of Computer Science and Engineering, Rajiv Gandhi University of Knowledge and Technologies,
+      has successfully completed the paid summer internship project titled <strong>"AI-Powered Saloon App"</strong>
+      at <strong>Saundarya App, Mumbai</strong>.
+    </p>
+    <p>
+      The work was carried out under the guidance of <strong>Mr. A. Mahendra</strong>, Project Internal Guide,
+      Department of Computer Science and Engineering. The report is approved for submission as part of the
+      internship evaluation.
+    </p>
+    <div class="signature-grid">
+      <div class="signature-box">
+        <div class="line"></div>
+        <strong>Signature of Internal Guide</strong>
+        <span>Mr. A. Mahendra</span>
+        <span>Assistant Professor</span>
+        <span>Department of CSE</span>
+      </div>
+      <div class="signature-box">
+        <div class="line"></div>
+        <strong>Signature of HOD</strong>
+        <span>Dr. Ch. Ratna Kumari</span>
+        <span>Assistant Professor</span>
+        <span>Department of CSE</span>
+      </div>
+      <div class="signature-box">
+        <div class="line"></div>
+        <strong>Signature of External Examiner</strong>
+        <span>Examiner</span>
+      </div>
+    </div>
+    <div class="footer">III</div>
+  </section>
+
+  <section class="page">
+    <h2>Internship Completion Certificate</h2>
+    <p class="center">Certificate issued by Saundarya App, Mumbai, for successful completion of the internship.</p>
+    <img class="certificate-img" src="file:///C:/Users/honey/Desktop/internship%20certificate.png" alt="Internship completion certificate">
+    <div class="footer">IV</div>
+  </section>
+
+  <section class="page">
+    <h2>Acknowledgement and Contents</h2>
+    <p>
+      I express my sincere gratitude to Rajiv Gandhi University of Knowledge and Technologies and the Department
+      of Computer Science and Engineering for providing the opportunity to complete this internship. I am thankful
+      to my project internal guide <strong>Mr. A. Mahendra</strong> for his guidance and support.
+    </p>
+    <p>
+      I also thank <strong>Saundarya App, Mumbai</strong>, and <strong>Mr. Kamlesh Gupta</strong>, Founder and CEO,
+      for giving me an opportunity to work as a paid Flutter App Development intern and contribute to AI-powered
+      features in the Saundarya application.
+    </p>
+    <h3>Table of Contents</h3>
+    <div class="toc-row"><span>Abstract, Introduction and Organization Profile</span><span>1</span></div>
+    <div class="toc-row"><span>Project Objectives and Requirements</span><span>2</span></div>
+    <div class="toc-row"><span>System Requirements</span><span>3</span></div>
+    <div class="toc-row"><span>System Design</span><span>4</span></div>
+    <div class="toc-row"><span>Implementation Details</span><span>5</span></div>
+    <div class="toc-row"><span>Modules Developed</span><span>6</span></div>
+    <div class="toc-row"><span>Testing, Results and Learning Outcomes</span><span>7</span></div>
+    <div class="toc-row"><span>Conclusion, Future Scope and References</span><span>8</span></div>
+    <div class="footer">V</div>
+  </section>
+
+  <section class="page">
+    <h2>Abstract</h2>
+    <p>
+      The AI-Powered Saloon App is a Flutter-based mobile application developed to provide an interactive
+      virtual beauty and salon try-on experience. The application allows users to upload or capture a
+      photo and preview styles such as hairstyles, beard styles, nail art, tattoos, and mehndi patterns.
+      It aims to reduce uncertainty before choosing a salon service by giving users a visual preview on
+      their own image.
+    </p>
+    <p>
+      During the internship, the main focus was on building a user-friendly AR mirror workspace, improving
+      gallery and camera flows, implementing model selection for free 2D try-on and premium AI try-on, and
+      creating a premium checkout process. The system uses Flutter for the mobile interface, Google ML Kit
+      for detection support, and a NestJS backend structure for premium AI image generation.
+    </p>
+    <p>
+      The project provided practical exposure to mobile UI design, image processing, application state
+      management, payment-flow prototyping, and AI feature integration. The final application demonstrates
+      how beauty technology can combine quick local previews with premium AI workflows for more realistic
+      results. The internship also improved my understanding of handling real device testing, UI feedback,
+      image editing tools, and user-friendly navigation in a Flutter application.
+    </p>
+    <h3>Keywords</h3>
+    <p>
+      Flutter, AI Salon, Virtual Try-On, AR Mirror, Google ML Kit, Image Editing, Premium Checkout,
+      Saundarya App.
+    </p>
+    <h2>Introduction and Organization Profile</h2>
+    <p>
+      Customers often want to preview salon services before applying them in real life. The AI-Powered Saloon
+      App addresses this requirement by providing a mobile platform where users can preview styles on their
+      own images. In the current digital environment, customers expect fast, visual, and personalized
+      experiences. A virtual try-on application helps users compare multiple styles before selecting a final
+      look.
+    </p>
+    <p>
+      Saundarya App, Mumbai is a beauty and salon-focused application initiative where the internship was
+      completed in the domain of Flutter App Development. The organization focuses on AI-powered beauty
+      experiences and mobile-first salon workflows. During the internship, I worked on improving the app
+      interface, developing try-on flows, and preparing premium feature screens for a complete demo.
+    </p>
+    <p>
+      My role involved understanding requirements, converting them into Flutter screens, testing the app
+      on Android, and improving the user experience based on feedback. The work included both free preview
+      features and premium AI-based feature flows.
+    </p>
+    <table>
+      <tr><th>Role</th><td>Flutter App Development Intern</td></tr>
+      <tr><th>Organization</th><td>Saundarya App, Mumbai</td></tr>
+      <tr><th>Internship Type</th><td>Paid Internship</td></tr>
+      <tr><th>Duration</th><td>1 May 2026 to 30 June 2026</td></tr>
+      <tr><th>Project</th><td>AI-Powered Saloon App</td></tr>
+      <tr><th>Guide</th><td>Mr. A. Mahendra</td></tr>
+    </table>
+    <div class="footer">1</div>
+  </section>
+
+  <section class="page">
+    <h2>Project Objectives and Requirements</h2>
+    <p>
+      The main objective of the project is to provide users with a simple and interactive way to preview
+      beauty and grooming styles before applying them in real life. The app is designed to support both
+      local 2D try-on and premium AI-assisted image editing.
+    </p>
+    <h3>Objectives</h3>
+    <ul>
+      <li>To build an AR mirror workspace for photo-based virtual try-on.</li>
+      <li>To support gallery upload and camera capture for user photos.</li>
+      <li>To implement 2D overlays for hairstyle, beard, nail art, tattoo, and mehndi categories.</li>
+      <li>To provide manual adjustment options such as move, resize, rotate, opacity, and reset.</li>
+      <li>To design premium feature selection and checkout flows.</li>
+      <li>To add save, share, full-screen preview, and edit options for generated results.</li>
+      <li>To keep the interface understandable for users who are not technically trained.</li>
+    </ul>
+    <h3>Functional Requirements</h3>
+    <ul>
+      <li>User should be able to upload an image from gallery or capture a new image from camera.</li>
+      <li>User should be able to choose models from hair, beard, nails, tattoo, and mehndi categories.</li>
+      <li>User should be able to drag, resize, rotate, and adjust selected overlays.</li>
+      <li>User should be able to open a result in full screen and access download, share, edit, and AI edit options.</li>
+      <li>Premium screen should allow multiple feature selection and calculate total amount.</li>
+      <li>Checkout screen should support UPI, cards, net banking, and PayPal options.</li>
+    </ul>
+    <div class="footer">2</div>
+  </section>
+
+  <section class="page">
+    <h2>System Requirements</h2>
+    <p>
+      The system requirements were selected according to the needs of Flutter mobile development and Android
+      testing. Since the application deals with images, camera, ML-based detection, and Android build tools,
+      enough storage and memory are important for smooth development.
+    </p>
+    <div class="two-col">
+      <div>
+        <h3>Hardware Requirements</h3>
+        <table>
+          <tr><th>Component</th><th>Requirement</th></tr>
+          <tr><td>Processor</td><td>Intel i3 or above</td></tr>
+          <tr><td>RAM</td><td>8 GB recommended</td></tr>
+          <tr><td>Storage</td><td>10 GB free space</td></tr>
+          <tr><td>Device</td><td>Android phone/emulator</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3>Software Requirements</h3>
+        <table>
+          <tr><th>Software</th><th>Purpose</th></tr>
+          <tr><td>Flutter & Dart</td><td>Mobile app</td></tr>
+          <tr><td>Android SDK</td><td>Build/testing</td></tr>
+          <tr><td>Google ML Kit</td><td>Detection</td></tr>
+          <tr><td>Node.js/NestJS</td><td>Backend</td></tr>
+        </table>
+      </div>
+    </div>
+    <h3>Development Dependencies</h3>
+    <ul>
+      <li><strong>image_picker:</strong> used for gallery and camera image selection.</li>
+      <li><strong>google_mlkit_face_detection:</strong> used for identifying face position.</li>
+      <li><strong>google_mlkit_face_mesh_detection:</strong> used for improved facial placement support.</li>
+      <li><strong>google_mlkit_pose_detection:</strong> used for tattoo and mehndi body placement support.</li>
+      <li><strong>gal and share_plus:</strong> used for saving and sharing try-on results.</li>
+      <li><strong>url_launcher:</strong> used for payment intent flows such as UPI and PayPal.</li>
+    </ul>
+    <div class="footer">3</div>
+  </section>
+
+  <section class="page">
+    <h2>System Design</h2>
+    <p>
+      The application follows a modular Flutter architecture. The user opens the AI Virtual Try-On workspace,
+      uploads a photo, selects a category, chooses a model, and previews the result. The result can be edited,
+      saved, shared, or opened in the premium AI workflow.
+    </p>
+    <h3>Workflow</h3>
+    <table>
+      <tr><th>Step</th><th>Description</th></tr>
+      <tr><td>1</td><td>User uploads a photo from gallery or captures through camera.</td></tr>
+      <tr><td>2</td><td>The app detects face, mesh, pose, or hand landmarks depending on category.</td></tr>
+      <tr><td>3</td><td>User selects hairstyle, beard, nails, tattoo, or mehndi model.</td></tr>
+      <tr><td>4</td><td>The selected overlay is placed on the image and can be adjusted manually.</td></tr>
+      <tr><td>5</td><td>User saves, shares, edits, or opens the current image in Premium AI.</td></tr>
+    </table>
+    <h3>Architecture Explanation</h3>
+    <p>
+      The application separates the main try-on screen, premium screens, detection services, and rendering
+      logic. This makes it easier to maintain the app and add new categories later. The AR mirror workspace
+      handles user interaction, while renderer and detection services support overlay placement.
+    </p>
+    <ul>
+      <li><strong>Presentation Layer:</strong> Flutter screens, model cards, editor UI, premium checkout UI.</li>
+      <li><strong>Service Layer:</strong> Face detection, advanced detection, and overlay rendering services.</li>
+      <li><strong>Data Layer:</strong> Local try-on model definitions and premium AI repository structure.</li>
+      <li><strong>Backend Layer:</strong> NestJS endpoint preparation for premium AI image generation.</li>
+    </ul>
+    <div class="footer">4</div>
+  </section>
+
+  <section class="page">
+    <h2>Implementation Details</h2>
+    <p>
+      The implementation was mainly done using Flutter and Dart. The app contains a main AI Virtual Try-On
+      workspace where users can switch between 2D Try-On and AI Premium modes. In 2D mode, the app applies
+      local model overlays on the user image. In AI Premium mode, the selected image can be prepared for
+      premium AI editing.
+    </p>
+    <h3>Technologies Used</h3>
+    <ul>
+      <li><strong>Flutter and Dart:</strong> used for UI, navigation, state handling, and mobile interaction.</li>
+      <li><strong>Google ML Kit:</strong> used for face detection, face mesh, pose detection, and segmentation support.</li>
+      <li><strong>Image Picker, Gal, Share Plus:</strong> used for gallery, camera, save, and share operations.</li>
+      <li><strong>URL Launcher:</strong> used for UPI and PayPal payment-related flows.</li>
+      <li><strong>NestJS Backend:</strong> prepared for premium AI image generation endpoint structure.</li>
+    </ul>
+    <h3>Implementation Highlights</h3>
+    <p>
+      The gallery flow was improved so that selected media first opens in a preview screen. From there, the
+      user can decide whether to use the image in the try-on panel, download it, share it, delete it, or open
+      it in the AI premium workflow. This avoids directly placing every selected gallery image into the panel.
+    </p>
+    <p>
+      The edit screen includes tools such as crop, cut, color, draw, rotate, and mirror. The editor allows
+      users to make basic visual changes before saving the image back to the main result. The premium section
+      includes multi-select feature pricing and checkout with payment method accordion logic.
+    </p>
+    <div class="footer">5</div>
+  </section>
+
+  <section class="page">
+    <h2>Modules Developed</h2>
+    <h3>Modules Developed</h3>
+    <ul>
+      <li><strong>Free AR Mirror:</strong> Hairstyle, beard, nail, tattoo, and mehndi previews.</li>
+      <li><strong>Gallery and Preview:</strong> Full-screen preview with download, edit, share, AI edit, and delete actions.</li>
+      <li><strong>Edit Image:</strong> Crop, cut, color, draw, rotate, mirror, undo, redo, and save tools.</li>
+      <li><strong>AI Assistant:</strong> Style description, model variations, selfie comparison, tattoo inspiration, and AI edit route.</li>
+      <li><strong>Premium Checkout:</strong> Feature selection with UPI, Cards, Net Banking, and PayPal payment options.</li>
+    </ul>
+    <h3>Module Description</h3>
+    <p>
+      The Free AR Mirror module forms the core part of the project. It lets users preview different salon
+      styles without needing backend processing. The model cards are organized by category so users can
+      quickly switch between hair, beard, nails, tattoo, and mehndi.
+    </p>
+    <p>
+      The AI Assistant module was added to make the app feel more guided. It accepts a style description,
+      suggests matching model variations, supports selfie comparison, and connects the current image to
+      the premium AI edit path. This module improves the overall user experience because users can explore
+      styles with less manual searching.
+    </p>
+    <p>
+      The Premium Checkout module provides a structured payment screen. Wallets were removed as per the
+      latest requirement, and the remaining methods include UPI, Cards, Net Banking, and PayPal. The selected
+      payment method expands while others remain collapsed.
+    </p>
+    <div class="footer">6</div>
+  </section>
+
+  <section class="page">
+    <h2>Testing, Results and Learning Outcomes</h2>
+    <h3>Testing Summary</h3>
+    <table>
+      <tr><th>Feature</th><th>Expected Result</th><th>Status</th></tr>
+      <tr><td>Photo upload/camera</td><td>Image appears in try-on panel</td><td>Completed</td></tr>
+      <tr><td>Model selection</td><td>Overlay appears and can be adjusted</td><td>Completed</td></tr>
+      <tr><td>Edit result</td><td>Editor opens with working tools</td><td>Completed</td></tr>
+      <tr><td>Save/share</td><td>Result can be saved or shared</td><td>Completed</td></tr>
+      <tr><td>Checkout</td><td>Selected payment method expands properly</td><td>Completed</td></tr>
+    </table>
+    <h3>Results</h3>
+    <p>
+      The project resulted in a functional Flutter application that demonstrates salon style preview features.
+      Users can upload images, apply models, adjust overlays, edit results, save images, share outputs, and
+      explore premium AI workflows. The app also includes a checkout screen suitable for demo and development
+      presentation.
+    </p>
+    <h3>Learning Outcomes</h3>
+    <ul>
+      <li>Gained practical experience in Flutter UI development and state handling.</li>
+      <li>Learned how to work with image upload, camera capture, save, and share flows.</li>
+      <li>Understood the importance of user-friendly placement and edit tools in visual apps.</li>
+      <li>Learned how ML-based detection can help in face, pose, and hand-related features.</li>
+      <li>Improved debugging skills while testing Android builds and resolving UI issues.</li>
+    </ul>
+    <div class="footer">7</div>
+  </section>
+
+  <section class="page">
+    <h2>Conclusion, Future Scope and References</h2>
+    <h3>Conclusion</h3>
+    <p>
+      The AI-Powered Saloon App successfully demonstrates an interactive salon try-on platform using Flutter,
+      local overlay rendering, image editing, ML-based detection support, and premium AI workflow preparation.
+      It helped in understanding how modern mobile applications can use AI-assisted features to improve user
+      decision-making and engagement.
+    </p>
+    <h3>Future Scope</h3>
+    <ul>
+      <li>Integrate production-ready AI image generation with stable backend credits and monitoring.</li>
+      <li>Add real payment verification and secure subscription management.</li>
+      <li>Improve natural blending for hairstyle, beard, tattoo, nail, and mehndi previews.</li>
+      <li>Add salon booking, nearby salon suggestions, and appointment management.</li>
+      <li>Support before/after comparison, social sharing, and creator marketplace features.</li>
+    </ul>
+    <h3>References</h3>
+    <ul>
+      <li>Flutter Documentation - https://docs.flutter.dev/</li>
+      <li>Dart Documentation - https://dart.dev/</li>
+      <li>Google ML Kit Documentation - https://developers.google.com/ml-kit</li>
+      <li>Android Developers Documentation - https://developer.android.com/</li>
+      <li>NestJS Documentation - https://docs.nestjs.com/</li>
+    </ul>
+    <div class="footer">8</div>
+  </section>
+</body>
+</html>

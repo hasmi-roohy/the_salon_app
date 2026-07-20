@@ -24,13 +24,22 @@ import '../../../premium/data/premium_access_controller.dart';
 import '../../../premium/domain/premium_models.dart';
 import '../../../premium/presentation/pages/premium_plans_page.dart';
 
-enum TryOnCategory { hairstyle, beard, nailArt, tattoo, mehndi }
+enum TryOnCategory {
+  hairstyle,
+  beard,
+  nailArt,
+  tattoo,
+  mehndi,
+  makeup,
+  dress,
+  appearance,
+}
 
 enum HairLookGroup { men, women }
 
 enum TryOnMode { twoD, threeD }
 
-enum _EditTool { cut, crop, rotate, mirror, color, draw }
+enum _EditTool { cut, crop, rotate, mirror, color, draw, filter, effect, ai }
 
 enum _CutMode { brush, lasso, line }
 
@@ -52,6 +61,18 @@ class _GalleryItem {
   });
 }
 
+class _AssistantSelfie {
+  final XFile file;
+  final Uint8List bytes;
+  final int score;
+
+  const _AssistantSelfie({
+    required this.file,
+    required this.bytes,
+    required this.score,
+  });
+}
+
 String _toolLabel(_EditTool tool) => switch (tool) {
   _EditTool.cut => 'Cut',
   _EditTool.crop => 'Crop',
@@ -59,6 +80,9 @@ String _toolLabel(_EditTool tool) => switch (tool) {
   _EditTool.mirror => 'Mirror',
   _EditTool.color => 'Color',
   _EditTool.draw => 'Draw',
+  _EditTool.filter => 'Filter',
+  _EditTool.effect => 'Effect',
+  _EditTool.ai => 'AI',
 };
 
 class TryOnStyle {
@@ -344,6 +368,7 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
   final _threeDRepository = LocalThreeDModelRepository();
   final _premiumThreeDRepository = PremiumThreeDRepository();
   final _threeDPrompt = TextEditingController();
+  final _assistantPrompt = TextEditingController();
   final _renderer = ArOverlayRenderer();
   final _resultKey = GlobalKey();
   final List<_GalleryItem> _galleryItems = [];
@@ -360,7 +385,6 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
   TryOnStyle? _selectedPremiumStyle;
   Color? _threeDPreviewColor;
   String? _generatedThreeDModelUrl;
-  String _threeDPromptStatus = 'Ask for a color change, like "brown hair".';
   HairLookGroup _hairLookGroup = HairLookGroup.men;
   TryOnStyle _style = _styles.first;
   Offset _adjustment = Offset.zero;
@@ -382,12 +406,18 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
   bool _working = false;
   bool _threeDGenerating = false;
   String _status = 'Upload a photo, then tap a style model below.';
+  String _assistantStatus =
+      'Try a prompt, upload selfies, or add tattoo inspiration.';
+  List<TryOnStyle> _assistantVariations = [];
+  List<_AssistantSelfie> _comparisonSelfies = [];
+  Uint8List? _tattooInspirationBytes;
 
   @override
   void dispose() {
     _detector.dispose();
     _advancedDetector.dispose();
     _threeDPrompt.dispose();
+    _assistantPrompt.dispose();
     super.dispose();
   }
 
@@ -634,6 +664,144 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
     }
   }
 
+  void _runAssistantPrompt() {
+    final prompt = _assistantPrompt.text.trim().toLowerCase();
+    final effectivePrompt = prompt.isEmpty
+        ? 'modern fade hairstyle with tattoo inspiration'
+        : prompt;
+    final wantsTattoo = effectivePrompt.contains('tattoo');
+    final wantsMehndi =
+        effectivePrompt.contains('mehndi') || effectivePrompt.contains('henna');
+    final wantsBeard = effectivePrompt.contains('beard');
+    final wantsNails =
+        effectivePrompt.contains('nail') || effectivePrompt.contains('manicure');
+    final category = wantsTattoo
+        ? TryOnCategory.tattoo
+        : wantsMehndi
+        ? TryOnCategory.mehndi
+        : wantsBeard
+        ? TryOnCategory.beard
+        : wantsNails
+        ? TryOnCategory.nailArt
+        : TryOnCategory.hairstyle;
+    final variations = _stylesForCategory(category).take(5).toList();
+    setState(() {
+      _mode = TryOnMode.twoD;
+      _category = category;
+      _style = variations.isNotEmpty
+          ? variations.first
+          : _firstStyleFor(category);
+      _assistantVariations = variations;
+      _selectedPremiumStyle = variations.isNotEmpty ? variations.first : null;
+      _threeDPrompt.text = _style.name;
+      _editedResultBytes = null;
+      _modelColorOverride = null;
+      _resetTransform();
+      _status = _photo == null
+          ? 'AI Assistant found ${variations.length} matching models. Upload or tap a selfie to apply.'
+          : 'AI Assistant applied ${_style.name}. Adjust it on the image if needed.';
+      _assistantStatus =
+          'Generated variations, try-on model, edit path, and nearby expert suggestions.';
+    });
+  }
+
+  Future<void> _pickComparisonSelfies() async {
+    final selected = await _picker.pickMultiImage(
+      imageQuality: 88,
+      maxWidth: 900,
+      limit: 5,
+    );
+    if (!mounted || selected.isEmpty) return;
+    final selfies = <_AssistantSelfie>[];
+    var index = 0;
+    for (final file in selected.take(5)) {
+      selfies.add(
+        _AssistantSelfie(
+          file: file,
+          bytes: await file.readAsBytes(),
+          score: (94 - index * 4).clamp(74, 94).toInt(),
+        ),
+      );
+      index += 1;
+    }
+    if (!mounted) return;
+    setState(() {
+      _comparisonSelfies = selfies;
+      _mode = TryOnMode.twoD;
+      _assistantStatus =
+          'Comparison grid ready. Tap any selfie to use it in try-on.';
+      _status = 'Selfies added. Tap the best one to open it in the panel.';
+    });
+  }
+
+  Future<void> _useAssistantSelfie(int index) async {
+    if (index < 0 || index >= _comparisonSelfies.length || _working) return;
+    final selfie = _comparisonSelfies[index];
+    setState(() {
+      _mode = TryOnMode.twoD;
+      _category = _style.category;
+      _assistantStatus =
+          'Using selfie ${index + 1} with ${_style.name}. Running detection...';
+    });
+    await _processPickedPhoto(selfie.file);
+    if (!mounted) return;
+    setState(() {
+      _assistantStatus =
+          'Selfie ${index + 1} applied. ${_style.name} is active on the panel.';
+    });
+  }
+
+  Future<void> _pickTattooInspiration() async {
+    final selected = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+      maxWidth: 900,
+    );
+    if (!mounted || selected == null) return;
+    final bytes = await selected.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _tattooInspirationBytes = bytes;
+      _mode = TryOnMode.twoD;
+      _category = TryOnCategory.tattoo;
+      _style = _firstStyleFor(TryOnCategory.tattoo);
+      _assistantVariations = _stylesForCategory(
+        TryOnCategory.tattoo,
+      ).take(5).toList();
+      _selectedPremiumStyle = _style;
+      _threeDPrompt.text = 'Tattoo inspired by uploaded reference';
+      _assistantStatus =
+          'Tattoo inspiration attached. Choose or upload a body photo to place it.';
+      _status = _photo == null
+          ? 'Tattoo inspiration ready. Upload a body photo for AR placement.'
+          : 'Tattoo model ready on current image. Drag, pinch, and rotate to fit.';
+    });
+  }
+
+  void _applyAssistantVariation(TryOnStyle style) {
+    setState(() {
+      _mode = TryOnMode.twoD;
+      _category = style.category;
+      _style = style;
+      _selectedPremiumStyle = style;
+      _threeDPrompt.text = style.name;
+      _editedResultBytes = null;
+      _modelColorOverride = null;
+      _resetTransform();
+      _assistantStatus = '${style.name} selected and ready.';
+      _status = _photo == null
+          ? 'Now upload or choose a selfie to try ${style.name}.'
+          : '${style.name} applied to the current image.';
+    });
+  }
+
+  void _selectAssistantExpert(String name) {
+    setState(() {
+      _assistantStatus = '$name selected. Booking flow can open from here.';
+      _status = 'Expert suggestion selected: $name.';
+    });
+  }
+
   void _selectCategory(TryOnCategory category) {
     setState(() {
       _category = category;
@@ -677,7 +845,6 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
       _threeDPreviewColor = null;
       _generatedThreeDModelUrl = null;
       _threeDPrompt.clear();
-      _threeDPromptStatus = 'Describe the realistic blended look you want.';
       _status = '${_threeDCategoryLabel(category)} AI styles shown.';
     });
   }
@@ -689,34 +856,7 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
   void _selectPremiumPreview(String name) {
     setState(() {
       _threeDPrompt.text = name;
-      _threeDPromptStatus =
-          '$name selected as preview inspiration. Upload a photo and generate when premium is unlocked.';
       _status = '$name preview selected.';
-    });
-  }
-
-  void _applyThreeDPrompt() {
-    final prompt = _threeDPrompt.text.trim().toLowerCase();
-    if (prompt.isEmpty) {
-      setState(() {
-        _threeDPromptStatus = 'Type a color command first.';
-      });
-      return;
-    }
-
-    final color = _colorFromPrompt(prompt);
-    setState(() {
-      if (prompt.contains('reset') || prompt.contains('original')) {
-        _threeDPreviewColor = null;
-        _threeDPromptStatus = 'AI prompt reset.';
-      } else if (color != null) {
-        _threeDPreviewColor = color;
-        _threeDPromptStatus =
-            'Prompt color noted. Real blending happens through the AI image provider.';
-      } else {
-        _threeDPromptStatus =
-            'Try prompts like "brown hair", "black beard", or "red nails".';
-      }
     });
   }
 
@@ -728,7 +868,6 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
         : _threeDPrompt.text.trim();
     setState(() {
       _threeDGenerating = true;
-      _threeDPromptStatus = 'Requesting premium AI image edit from backend...';
       _status = 'Generating premium AI try-on...';
     });
 
@@ -743,32 +882,10 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
     setState(() {
       _threeDGenerating = false;
       _generatedThreeDModelUrl = result.modelUrl;
-      _threeDPromptStatus = result.message;
       _status = result.modelUrl == null
           ? 'AI provider setup needed.'
           : 'Premium AI image generated.';
     });
-  }
-
-  Color? _colorFromPrompt(String prompt) {
-    if (prompt.contains('black')) return const Color(0xff17110d);
-    if (prompt.contains('brown')) return const Color(0xff6b3f2a);
-    if (prompt.contains('blonde') || prompt.contains('gold')) {
-      return const Color(0xffc9963a);
-    }
-    if (prompt.contains('red') || prompt.contains('burgundy')) {
-      return const Color(0xff8b1620);
-    }
-    if (prompt.contains('pink') || prompt.contains('rose')) {
-      return const Color(0xffd9778f);
-    }
-    if (prompt.contains('silver') || prompt.contains('chrome')) {
-      return const Color(0xffaeb6c1);
-    }
-    if (prompt.contains('mehndi') || prompt.contains('henna')) {
-      return const Color(0xff7b3f22);
-    }
-    return null;
   }
 
   String _threeDCategoryLabel(ThreeDCategory category) {
@@ -1516,10 +1633,16 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
               onSelectionChanged: (value) => _selectMode(value.first),
             ),
             const SizedBox(height: 14),
-            if (_mode == TryOnMode.threeD && _premiumBannerVisible) ...[
+            if (_mode == TryOnMode.threeD &&
+                _premiumBannerVisible &&
+                (!PremiumAccessController.instance.isPremiumUnlocked ||
+                    PremiumAccessController.instance.isExpiringSoon)) ...[
               _PremiumBanner(
                 onClose: () => setState(() => _premiumBannerVisible = false),
                 onUnlock: () => _openPremiumPlans(_selectedPremiumFeature),
+                showExpiryNotice:
+                    PremiumAccessController.instance.isExpiringSoon &&
+                    PremiumAccessController.instance.isPremiumUnlocked,
               ),
               const SizedBox(height: 12),
             ],
@@ -1656,12 +1779,6 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
                   _threeDGenerating ? 'Generating AI...' : 'Generate AI try-on',
                 ),
               ),
-              const SizedBox(height: 8),
-              _ThreeDPromptBar(
-                controller: _threeDPrompt,
-                status: _threeDPromptStatus,
-                onApply: _applyThreeDPrompt,
-              ),
             ],
             const SizedBox(height: 8),
             Row(
@@ -1676,6 +1793,28 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
                   ),
                 Expanded(child: Text(_status)),
               ],
+            ),
+            const SizedBox(height: 12),
+            _AiAssistantDemoSection(
+              controller: _assistantPrompt,
+              status: _assistantStatus,
+              variations: _assistantVariations,
+              comparisonSelfies: _comparisonSelfies,
+              tattooInspirationBytes: _tattooInspirationBytes,
+              currentStyleName: _style.name,
+              hasPhoto: _photo != null,
+              onGenerate: _runAssistantPrompt,
+              onUseVoiceSample: () {
+                _assistantPrompt.text =
+                    'Generate modern fade hairstyle with tattoo inspiration';
+                _runAssistantPrompt();
+              },
+              onPickSelfies: _pickComparisonSelfies,
+              onPickTattoo: _pickTattooInspiration,
+              onSelectVariation: _applyAssistantVariation,
+              onUseSelfie: _useAssistantSelfie,
+              onEditWithAi: _openCurrentResultInAiPremium,
+              onSelectExpert: _selectAssistantExpert,
             ),
             const SizedBox(height: 18),
             Text(
@@ -1707,6 +1846,18 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
                     ButtonSegment(
                       value: TryOnCategory.mehndi,
                       label: Text('Mehndi'),
+                    ),
+                    ButtonSegment(
+                      value: TryOnCategory.makeup,
+                      label: Text('Makeup'),
+                    ),
+                    ButtonSegment(
+                      value: TryOnCategory.dress,
+                      label: Text('Dress'),
+                    ),
+                    ButtonSegment(
+                      value: TryOnCategory.appearance,
+                      label: Text('Appearance'),
                     ),
                   ],
                   selected: {_category},
@@ -1796,27 +1947,42 @@ class _AiSmartMirrorWorkspaceState extends State<AiSmartMirrorWorkspace> {
               ),
             ],
             const SizedBox(height: 12),
-            SizedBox(
-              height: 154,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: models.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final model = models[index];
-                  return _ModelCard(
-                    style: model,
-                    selected: _mode == TryOnMode.twoD
-                        ? _style.id == model.id
-                        : _selectedPremiumStyle?.id == model.id,
-                    onTap: () => _mode == TryOnMode.twoD
-                        ? _selectStyle(model)
-                        : _selectPremiumStyle(model),
-                    locked: false,
-                  );
-                },
+            if (models.isEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    activeStyleCategory == TryOnCategory.makeup
+                        ? 'Makeup try-ons are being prepared for the next update.'
+                        : activeStyleCategory == TryOnCategory.dress
+                        ? 'Dress presets will appear here soon.'
+                        : 'Appearance looks are being assembled for the next update.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                height: 154,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: models.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    final model = models[index];
+                    return _ModelCard(
+                      style: model,
+                      selected: _mode == TryOnMode.twoD
+                          ? _style.id == model.id
+                          : _selectedPremiumStyle?.id == model.id,
+                      onTap: () => _mode == TryOnMode.twoD
+                          ? _selectStyle(model)
+                          : _selectPremiumStyle(model),
+                      locked: false,
+                    );
+                  },
+                ),
               ),
-            ),
             if (_mode == TryOnMode.threeD) ...[
               const SizedBox(height: 12),
               _Premium3DCard(
@@ -1857,6 +2023,238 @@ class _QuickActionButton extends StatelessWidget {
       onPressed: onTap,
       icon: Icon(icon),
       label: FittedBox(child: Text(label)),
+    );
+  }
+}
+
+class _AiAssistantDemoSection extends StatelessWidget {
+  final TextEditingController controller;
+  final String status;
+  final List<TryOnStyle> variations;
+  final List<_AssistantSelfie> comparisonSelfies;
+  final Uint8List? tattooInspirationBytes;
+  final String currentStyleName;
+  final bool hasPhoto;
+  final VoidCallback onGenerate;
+  final VoidCallback onUseVoiceSample;
+  final VoidCallback onPickSelfies;
+  final VoidCallback onPickTattoo;
+  final ValueChanged<TryOnStyle> onSelectVariation;
+  final ValueChanged<int> onUseSelfie;
+  final VoidCallback onEditWithAi;
+  final ValueChanged<String> onSelectExpert;
+
+  const _AiAssistantDemoSection({
+    required this.controller,
+    required this.status,
+    required this.variations,
+    required this.comparisonSelfies,
+    required this.tattooInspirationBytes,
+    required this.currentStyleName,
+    required this.hasPhoto,
+    required this.onGenerate,
+    required this.onUseVoiceSample,
+    required this.onPickSelfies,
+    required this.onPickTattoo,
+    required this.onSelectVariation,
+    required this.onUseSelfie,
+    required this.onEditWithAi,
+    required this.onSelectExpert,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final suggestions = const [
+      ('Urban Fade Studio', 'Hair stylist', '1.2 km', Icons.content_cut),
+      ('Inkline Tattoo Lab', 'Tattoo artist', '2.4 km', Icons.brush_outlined),
+      ('Glow Bridal Hands', 'Mehndi artist', '3.1 km', Icons.back_hand),
+    ];
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: EdgeInsets.zero,
+      initiallyExpanded: false,
+      leading: const Icon(Icons.auto_awesome),
+      title: const Text('AI Assistant'),
+      subtitle: Text(status, maxLines: 1, overflow: TextOverflow.ellipsis),
+      children: [
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          minLines: 1,
+          maxLines: 2,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: 'Describe the look',
+            hintText: 'Generate modern fade hairstyle with tattoo inspiration',
+            suffixIcon: IconButton(
+              tooltip: 'Use sample request',
+              icon: const Icon(Icons.mic_none),
+              onPressed: onUseVoiceSample,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: onGenerate,
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text('Generate variations'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.outlined(
+              tooltip: 'Upload 5 selfies',
+              onPressed: onPickSelfies,
+              icon: const Icon(Icons.grid_view),
+            ),
+            const SizedBox(width: 8),
+            IconButton.outlined(
+              tooltip: 'Tattoo inspiration',
+              onPressed: onPickTattoo,
+              icon: const Icon(Icons.brush_outlined),
+            ),
+            const SizedBox(width: 8),
+            IconButton.outlined(
+              tooltip: hasPhoto
+                  ? 'Edit current image with AI'
+                  : 'Upload a photo before AI edit',
+              onPressed: hasPhoto ? onEditWithAi : null,
+              icon: const Icon(Icons.auto_fix_high),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (variations.isNotEmpty) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'AI variations',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 76,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: variations.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final style = variations[index];
+                return ChoiceChip(
+                  avatar: const Icon(Icons.auto_awesome, size: 16),
+                  label: Text(style.name),
+                  selected: style.name == currentStyleName,
+                  onSelected: (_) => onSelectVariation(style),
+                );
+              },
+            ),
+          ),
+        ],
+        if (comparisonSelfies.isNotEmpty) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Selfie comparison',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          const SizedBox(height: 6),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: comparisonSelfies.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 5,
+              crossAxisSpacing: 6,
+              mainAxisSpacing: 6,
+            ),
+            itemBuilder: (context, index) => InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => onUseSelfie(index),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.memory(
+                      comparisonSelfies[index].bytes,
+                      fit: BoxFit.cover,
+                    ),
+                    Positioned(
+                      left: 3,
+                      bottom: 3,
+                      right: 3,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withAlpha(145),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            index == 0
+                                ? 'Use best'
+                                : '${comparisonSelfies[index].score}%',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (tattooInspirationBytes != null) ...[
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  tattooInspirationBytes!,
+                  width: 58,
+                  height: 58,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Tattoo inspiration attached. Current style: $currentStyleName',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Suggested nearby experts',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ),
+        const SizedBox(height: 6),
+        for (final item in suggestions)
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(child: Icon(item.$4, size: 18)),
+            title: Text(item.$1),
+            subtitle: Text([item.$2, item.$3].join(' - ')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => onSelectExpert(item.$1),
+          ),
+      ],
     );
   }
 }
@@ -1914,20 +2312,53 @@ class _MirrorActionToolbar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
               children: [
-                _ToolbarAction(
-                  icon: Icons.file_download_outlined,
-                  label: 'Save',
-                  onTap: !hasPhoto || working ? null : onSave,
-                ),
-                _ToolbarAction(
-                  icon: Icons.edit_outlined,
-                  label: 'Edit',
-                  onTap: !hasPhoto || working ? null : onEdit,
-                ),
-                _ToolbarAction(
-                  icon: Icons.share_outlined,
-                  label: 'Share',
-                  onTap: !hasPhoto || working ? null : onShare,
+                Expanded(
+                  child: Tooltip(
+                    message: 'More actions',
+                    child: PopupMenuButton<String>(
+                      tooltip: 'More actions',
+                      icon: const Icon(Icons.more_horiz, color: Color(0xff1e2d3d)),
+                      color: Colors.white,
+                      surfaceTintColor: Colors.transparent,
+                      onSelected: (value) {
+                        if (value == 'save') onSave();
+                        if (value == 'edit') onEdit();
+                        if (value == 'share') onShare();
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'save',
+                          child: Row(
+                            children: const [
+                              Icon(Icons.file_download_outlined, size: 18),
+                              SizedBox(width: 8),
+                              Text('Save'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: const [
+                              Icon(Icons.edit_outlined, size: 18),
+                              SizedBox(width: 8),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'share',
+                          child: Row(
+                            children: const [
+                              Icon(Icons.share_outlined, size: 18),
+                              SizedBox(width: 8),
+                              Text('Share'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -2531,6 +2962,7 @@ class _EditResultScreenState extends State<_EditResultScreen> {
   bool _resizingCrop = false;
   int _rotationTurns = 0;
   bool _mirrored = false;
+  bool _showOriginal = false;
   Color _color = const Color(0xff7b3f22);
   final List<Offset> _cutPoints = [];
   final List<Offset> _drawPoints = [];
@@ -2994,6 +3426,10 @@ class _EditResultScreenState extends State<_EditResultScreen> {
     setState(() => _tool = nextTool);
   }
 
+  void _togglePreviewSource() {
+    setState(() => _showOriginal = !_showOriginal);
+  }
+
   Future<void> _download() async {
     try {
       await _commitActiveTool();
@@ -3047,6 +3483,11 @@ class _EditResultScreenState extends State<_EditResultScreen> {
         foregroundColor: Colors.white,
         title: Text(_toolLabel(_tool)),
         actions: [
+          IconButton(
+            tooltip: 'Mirror / original',
+            icon: Icon(_showOriginal ? Icons.photo_outlined : Icons.compare_outlined),
+            onPressed: _togglePreviewSource,
+          ),
           IconButton(
             tooltip: 'Undo',
             icon: const Icon(Icons.undo),
@@ -3148,80 +3589,86 @@ class _EditResultScreenState extends State<_EditResultScreen> {
                               : null,
                           child: RepaintBoundary(
                             key: _editPreviewKey,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  Container(color: Colors.black),
-                                  ClipRect(
-                                    child: RotatedBox(
-                                      quarterTurns: _rotationTurns,
-                                      child: Transform(
-                                        alignment: Alignment.center,
-                                        transform: Matrix4.identity()
-                                          ..scale(
-                                            _mirrored ? -1.0 : 1.0,
-                                            1.0,
-                                          ),
-                                        child: _EditedImagePreview(
-                                          imageBytes:
-                                              _tool == _EditTool.cut &&
-                                                  _cutPreviewBytes != null
-                                              ? _cutPreviewBytes!
-                                              : _workingImageBytes,
-                                          colorPreview: _tool == _EditTool.color
-                                              ? _color
-                                              : null,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  if (_tool == _EditTool.crop)
-                                    CustomPaint(
-                                      painter: _CropOverlayPainter(_cropRect),
-                                    ),
-                                  if (_tool == _EditTool.cut)
-                                    CustomPaint(
-                                      painter: _CutPreviewPainter(
-                                        points: _cutPoints,
-                                        mode: _cutMode,
-                                        brushSize: _cutBrushSize,
-                                        showMask: _cutPreviewBytes == null,
-                                      ),
-                                    ),
-                                  if (_tool == _EditTool.draw)
-                                    CustomPaint(
-                                      painter: _DrawPreviewPainter(
-                                        _drawPoints,
-                                        _color,
-                                      ),
-                                    ),
-                                  Positioned(
-                                    left: 10,
-                                    bottom: 10,
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withAlpha(150),
-                                        borderRadius: BorderRadius.circular(
-                                          100,
-                                        ),
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        child: Text(
-                                          _toolHint,
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                            child: InteractiveViewer(
+                              minScale: 1.0,
+                              maxScale: 4.0,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Container(color: Colors.black),
+                                    ClipRect(
+                                      child: RotatedBox(
+                                        quarterTurns: _rotationTurns,
+                                        child: Transform(
+                                          alignment: Alignment.center,
+                                          transform: Matrix4.identity()
+                                            ..scale(
+                                              _mirrored ? -1.0 : 1.0,
+                                              1.0,
+                                            ),
+                                          child: _EditedImagePreview(
+                                            imageBytes:
+                                                _tool == _EditTool.cut &&
+                                                        _cutPreviewBytes != null
+                                                    ? _cutPreviewBytes!
+                                                    : _showOriginal
+                                                        ? widget.imageBytes
+                                                        : _workingImageBytes,
+                                            colorPreview: _tool == _EditTool.color
+                                                ? _color
+                                                : null,
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    if (_tool == _EditTool.crop)
+                                      CustomPaint(
+                                        painter: _CropOverlayPainter(_cropRect),
+                                      ),
+                                    if (_tool == _EditTool.cut)
+                                      CustomPaint(
+                                        painter: _CutPreviewPainter(
+                                          points: _cutPoints,
+                                          mode: _cutMode,
+                                          brushSize: _cutBrushSize,
+                                          showMask: _cutPreviewBytes == null,
+                                        ),
+                                      ),
+                                    if (_tool == _EditTool.draw)
+                                      CustomPaint(
+                                        painter: _DrawPreviewPainter(
+                                          _drawPoints,
+                                          _color,
+                                        ),
+                                      ),
+                                    Positioned(
+                                      left: 10,
+                                      bottom: 10,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withAlpha(150),
+                                          borderRadius: BorderRadius.circular(
+                                            100,
+                                          ),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          child: Text(
+                                            _toolHint,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -3339,6 +3786,30 @@ class _EditResultScreenState extends State<_EditResultScreen> {
                         _changeTool(_EditTool.draw);
                       },
                     ),
+                    _EditToolTab(
+                      icon: Icons.filter_alt_outlined,
+                      label: 'Filter',
+                      selected: _tool == _EditTool.filter,
+                      onTap: () {
+                        _changeTool(_EditTool.filter);
+                      },
+                    ),
+                    _EditToolTab(
+                      icon: Icons.auto_fix_high_outlined,
+                      label: 'Effect',
+                      selected: _tool == _EditTool.effect,
+                      onTap: () {
+                        _changeTool(_EditTool.effect);
+                      },
+                    ),
+                    _EditToolTab(
+                      icon: Icons.auto_awesome_outlined,
+                      label: 'AI',
+                      selected: _tool == _EditTool.ai,
+                      onTap: () {
+                        _changeTool(_EditTool.ai);
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -3358,6 +3829,9 @@ class _EditResultScreenState extends State<_EditResultScreen> {
     _EditTool.mirror => 'Flip the image horizontally',
     _EditTool.color => 'Color preview is visible here',
     _EditTool.draw => 'Draw over the image',
+    _EditTool.filter => 'Filter presets are ready for the next pass',
+    _EditTool.effect => 'Highlighter and soft effect presets are ready',
+    _EditTool.ai => 'Send this edit to the AI prompt workspace',
   };
 }
 
@@ -3579,6 +4053,36 @@ class _EditControlsPanel extends StatelessWidget {
               TextButton(onPressed: onClearDraw, child: const Text('Clear')),
             ],
           ),
+        _EditTool.filter => const Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Filter presets: soft glow, contrast, and skin smoothing.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        _EditTool.effect => const Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Effect presets: highlighter, brush, and pencil details for hair styling.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        _EditTool.ai => const Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'AI will open the prompt workspace with the edited image attached.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
       },
     );
   }
@@ -3599,32 +4103,35 @@ class _EditToolTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: SizedBox(
-        width: 68,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            height: 54,
-            decoration: BoxDecoration(
-              color: selected ? Colors.white.withAlpha(34) : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: Colors.white, size: 21),
-                const SizedBox(height: 3),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    label,
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
+    return Tooltip(
+      message: label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: SizedBox(
+          width: 68,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 54,
+              decoration: BoxDecoration(
+                color: selected ? Colors.white.withAlpha(34) : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: Colors.white, size: 21),
+                  const SizedBox(height: 3),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -4125,11 +4632,18 @@ class _ThreeDViewerFallback extends StatelessWidget {
 class _PremiumBanner extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback onUnlock;
+  final bool showExpiryNotice;
 
-  const _PremiumBanner({required this.onClose, required this.onUnlock});
+  const _PremiumBanner({
+    required this.onClose,
+    required this.onUnlock,
+    this.showExpiryNotice = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final controller = PremiumAccessController.instance;
+    final expiryNotice = showExpiryNotice ? controller.expiryMessage : null;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 8, 6, 12),
       decoration: BoxDecoration(
@@ -4160,9 +4674,12 @@ class _PremiumBanner extends StatelessWidget {
               ),
             ],
           ),
-          const Text(
-            'Explore sample looks, then unlock one Premium Studio for hair, beard, and nails.',
-            style: TextStyle(color: Colors.white70),
+          Text(
+            expiryNotice ??
+                'Explore sample looks, then unlock one Premium Studio for hair, beard, and nails.',
+            style: TextStyle(
+              color: expiryNotice != null ? Colors.amber.shade200 : Colors.white70,
+            ),
           ),
           const SizedBox(height: 10),
           SizedBox(
@@ -4246,51 +4763,6 @@ class _Premium3DCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ThreeDPromptBar extends StatelessWidget {
-  final TextEditingController controller;
-  final String status;
-  final VoidCallback onApply;
-
-  const _ThreeDPromptBar({
-    required this.controller,
-    required this.status,
-    required this.onApply,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(190),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withAlpha(24)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: controller,
-            onSubmitted: (_) => onApply(),
-            decoration: InputDecoration(
-              isDense: true,
-              labelText: 'AI style prompt',
-              hintText: 'Example: realistic brown layered haircut',
-              suffixIcon: IconButton(
-                onPressed: onApply,
-                icon: const Icon(Icons.auto_awesome),
-              ),
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(status, style: Theme.of(context).textTheme.bodySmall),
-        ],
       ),
     );
   }
@@ -4397,6 +4869,9 @@ class _ModelCard extends StatelessWidget {
       TryOnCategory.nailArt => 'Nail design',
       TryOnCategory.tattoo => 'Tattoo design',
       TryOnCategory.mehndi => 'Mehndi design',
+      TryOnCategory.makeup => 'Makeup look',
+      TryOnCategory.dress => 'Dress style',
+      TryOnCategory.appearance => 'Appearance look',
     };
     final mode = locked
         ? 'Available for 2D preview and Premium AI render.'

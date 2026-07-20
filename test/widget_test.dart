@@ -1,4 +1,4 @@
-// This is a basic Flutter widget test.
+/ This is a basic Flutter widget test.
 //
 // To perform an interaction with a widget in your test, use the WidgetTester
 // utility in the flutter_test package. For example, you can send tap and scroll
@@ -24,6 +24,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Explore'), findsWidgets);
+  });
+
+  testWidgets('AR Mirror shows the expanded category list', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AiSmartMirrorWorkspace(enableThreeDViewer: false),
+      ),
+    );
+
+    await tester.scrollUntilVisible(find.text('Makeup'), 300, scrollable: verticalScroll);
+    expect(find.text('Makeup'), findsOneWidget);
+    expect(find.text('Dress'), findsOneWidget);
+    expect(find.text('Appearance'), findsOneWidget);
   });
 
   testWidgets('AR Mirror shows direct edit controls without prompt bar', (
